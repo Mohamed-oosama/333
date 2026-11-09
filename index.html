@@ -1,0 +1,379 @@
+﻿<!doctype html>
+<html lang=ar dir=rtl>
+<head>
+  <meta charset=UTF-8 />
+  <meta name=viewport content=width=device-width, initial-scale=1.0 />
+  <meta name=theme-color content=#0d2345 />
+  <meta name=description content=بوابة مستشفى MNU 333 — المنصة السريرية الأساسية ومنصة الأرشيف الصحي الموحد />
+  <title>MNU 333 | بوابة المنصات الطبية</title>
+  <link rel=preconnect href=https://fonts.googleapis.com>
+  <link rel=preconnect href=https://fonts.gstatic.com crossorigin>
+  <link href=https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap rel=stylesheet>
+  <link rel=icon href=./assets/mnu-university-logo.jpg type=image/jpeg />
+  <style>
+    :root {
+      --navy: #0d2345;
+      --navy-dark: #08162b;
+      --navy-light: #15325b;
+      --gold: #c6942e;
+      --gold-hover: #b08225;
+      --gold-soft: rgba(198, 148, 46, 0.12);
+      --teal: #2a9d8f;
+      --teal-soft: rgba(42, 157, 143, 0.12);
+      --bg-slate: #f4f7fb;
+      --text-main: #0d2345;
+      --text-muted: #5a6e85;
+      --white: #ffffff;
+      --border: rgba(13, 35, 69, 0.1);
+      --shadow: 0 10px 30px rgba(13, 35, 69, 0.08);
+      --shadow-hover: 0 20px 40px rgba(13, 35, 69, 0.14);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Cairo', system-ui, sans-serif;
+      background: linear-gradient(180deg, #eef4fc 0%, #f8fafc 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.6;
+    }
+    .topbar {
+      background: var(--navy);
+      color: var(--white);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--gold);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: var(--white);
+    }
+    .brand img {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid var(--gold);
+      object-fit: cover;
+      background: #fff;
+    }
+    .brand-text strong {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #fff;
+    }
+    .brand-text span {
+      display: block;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 500;
+    }
+    .badge-vercel {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      color: #fff;
+      font-weight: 600;
+    }
+    .badge-vercel svg { width: 14px; height: 14px; fill: currentColor; }
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .hero {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .kicker {
+      display: inline-block;
+      background: var(--gold-soft);
+      color: var(--gold);
+      border: 1px solid rgba(198, 148, 46, 0.3);
+      padding: 4px 16px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .hero h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--navy);
+      margin-bottom: 10px;
+    }
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 650px;
+      margin: 0 auto;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 28px;
+      margin-bottom: 36px;
+    }
+    .card {
+      background: var(--white);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+      border-color: rgba(198, 148, 46, 0.35);
+    }
+    .card::before {
+      content: ";
+ position: absolute;
+ top: 0;
+ right: 0;
+ left: 0;
+ height: 5px;
+ }
+ .card.primary-site::before {
+ background: linear-gradient(90deg, var(--navy), var(--gold));
+ }
+ .card.archive-site::before {
+ background: linear-gradient(90deg, var(--teal), var(--navy));
+ }
+ .card-icon {
+ width: 54px;
+ height: 54px;
+ border-radius: 12px;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ margin-bottom: 20px;
+ }
+ .card.primary-site .card-icon {
+ background: rgba(13, 35, 69, 0.08);
+ color: var(--navy);
+ }
+ .card.archive-site .card-icon {
+ background: var(--teal-soft);
+ color: var(--teal);
+ }
+ .card-icon svg { width: 28px; height: 28px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+ .card-tag {
+ font-size: 0.8rem;
+ font-weight: 700;
+ text-transform: uppercase;
+ letter-spacing: 0.5px;
+ margin-bottom: 6px;
+ }
+ .card.primary-site .card-tag { color: var(--gold); }
+ .card.archive-site .card-tag { color: var(--teal); }
+ .card h2 {
+ font-size: 1.45rem;
+ font-weight: 800;
+ color: var(--navy);
+ margin-bottom: 12px;
+ }
+ .card-desc {
+ font-size: 0.96rem;
+ color: var(--text-muted);
+ margin-bottom: 22px;
+ flex: 1;
+ }
+ .feature-list {
+ list-style: none;
+ margin-bottom: 26px;
+ display: flex;
+ flex-direction: column;
+ gap: 10px;
+ }
+ .feature-list li {
+ font-size: 0.9rem;
+ color: var(--navy-dark);
+ display: flex;
+ align-items: center;
+ gap: 10px;
+ }
+ .feature-list li svg {
+ width: 16px;
+ height: 16px;
+ stroke: var(--teal);
+ flex-shrink: 0;
+ }
+ .btn {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ gap: 10px;
+ padding: 13px 24px;
+ border-radius: 10px;
+ font-size: 1rem;
+ font-weight: 700;
+ text-decoration: none;
+ transition: all 0.2s ease;
+ cursor: pointer;
+ }
+ .btn-gold {
+ background: var(--navy);
+ color: var(--gold);
+ border: 1.5px solid var(--gold);
+ }
+ .btn-gold:hover {
+ background: var(--gold);
+ color: var(--navy);
+ }
+ .btn-teal {
+ background: var(--teal);
+ color: #fff;
+ border: 1.5px solid var(--teal);
+ }
+ .btn-teal:hover {
+ background: #238377;
+ border-color: #238377;
+ }
+ .btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; }
+ .quick-info {
+ background: var(--white);
+ border-radius: var(--radius);
+ border: 1px solid var(--border);
+ padding: 20px 24px;
+ display: flex;
+ flex-wrap: wrap;
+ align-items: center;
+ justify-content: space-between;
+ gap: 16px;
+ font-size: 0.92rem;
+ color: var(--text-muted);
+ }
+ .quick-info strong { color: var(--navy); }
+ .info-tags {
+ display: flex;
+ gap: 8px;
+ flex-wrap: wrap;
+ }
+ .info-tag {
+ background: var(--bg-slate);
+ border: 1px solid var(--border);
+ padding: 4px 10px;
+ border-radius: 6px;
+ font-size: 0.82rem;
+ font-weight: 600;
+ }
+ .footer {
+ background: var(--navy-dark);
+ color: rgba(255, 255, 255, 0.7);
+ text-align: center;
+ padding: 18px 20px;
+ font-size: 0.85rem;
+ border-top: 1px solid rgba(255, 255, 255, 0.1);
+ }
+ .footer strong { color: #fff; }
+ @media (max-width: 768px) {
+ .hero h1 { font-size: 1.7rem; }
+ .grid { grid-template-columns: 1fr; }
+ .quick-info { flex-direction: column; align-items: flex-start; }
+ }
+ </style>
+</head>
+<body>
+ <header class=topbar>
+ <a class=brand href=./>
+ <img src=./assets/mnu-university-logo.jpg alt=شعار جامعة المنصورة الجديدة />
+ <div class=brand-text>
+ <strong>MNU 333</strong>
+ <span>جامعة المنصورة الجديدة · مساحة الرعاية الطبية</span>
+ </div>
+ </a>
+ <div class=badge-vercel>
+ <svg viewBox=0 0 1155 1000><path d=M577.347 0L1154.69 1000H0L577.347 0Z/></svg>
+ <span>جاهز للنشر على Vercel</span>
+ </div>
+ </header>
+
+ <main class=container>
+ <section class=hero>
+ <span class=kicker>بوابة المنظومة الطبية المزدوجة</span>
+ <h1>اختر المنصة التي تريد استعراضها</h1>
+ <p>يحتوي هذا المجلد المستقل على منصتين طبيتين متكاملتين جاهزتين للرفع والنشر المباشر على منصة Vercel.</p>
+ </section>
+
+ <div class=grid>
+ <!-- الموقع الأول: المنصة السريرية الأساسية -->
+ <article class=card primary-site>
+ <div class=card-icon>
+ <svg viewBox=0 0 24 24><path d=M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z/><polyline points=9 22 9 12 15 12 15 22/></svg>
+ </div>
+ <span class=card-tag>الموقع الأول · مسار: /main-platform/</span>
+ <h2>المنصة السريرية الأساسية</h2>
+ <p class=card-desc>النظام السريري الكامل لمستشفى MNU 333، يضم الصفحة العامة وحجز المواعيد، مساحة الطبيب، لوحة الفرز السريري، مراجعة النماذج البحثية السبعة، وبوابة المريض.</p>
+ <ul class=feature-list>
+ <li><svg viewBox=0 0 24 24><polyline points=20 6 9 17 4 12/></svg> حجز المواعيد وتفادي التعارض للمريض والطبيب</li>
+ <li><svg viewBox=0 0 24 24><polyline points=20 6 9 17 4 12/></svg> مساحة عمل الطبيب وإدارة ملفات المرضى والزيارات</li>
+ <li><svg viewBox=0 0 24 24><polyline points=20 6 9 17 4 12/></svg> استعراض النماذج البحثية السبعة لسرطان الرئة</li>
+ <li><svg viewBox=0 0 24 24><polyline points=20 6 9 17 4 12/></svg> مساحة قسم الأشعة والاستقبال والفرز</li>
+ </ul>
+ <a class=btn btn-gold href=./main-platform/>
+ <span>الدخول للمنصة الأساسية</span>
+ <svg viewBox=0 0 24 24><line x1=5 y1=12 x2=19 y2=12/><polyline points=12 5 19 12 12 19/></svg>
+ </a>
+ </article>
+
+ <!-- الموقع الثاني: منصة الأرشيف الصحي الموحد -->
+ <article class=card archive-site>
+ <div class=card-icon>
+ <svg viewBox=0 0 24 24><path d=M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z/><polyline points=14 2 14 8 20 8/><line x1=16 y1=13 x2=8 y2=13/><line x1=16 y1=17 x2=8 y2=17/><polyline points=10 9 9 9 8 9/></svg>
+ </div>
+ <span class=card-tag>الموقع الثاني · مسار: /archive-platform/</span>
+ <h2>منصة الأرشيف الصحي الموحد</h2>
+ <p class=card-desc>المنصة التفاعلية المخصصة للأرشيف الطبي، تضم سجل الزيارات الشامل، معرض صور نتائج المختبر مع إمكانية رفع الصور، وعارض دراسات الأشعة التفاعلي بكافة أدواته.</p>
+ <ul class=feature-list>
+ <li><svg viewBox=0 0 24 24><polyline points=20 6 9 17 4 12/></svg> سجل الزيارات المفصل وربط التقارير والروشتات والمرفقات</li>
+ <li><svg viewBox=0 0 24 24><polyline points=20 6 9 17 4 12/></svg> معرض صور نتائج المختبر مع رفع صور حقيقية محلياً</li>
+ <li><svg viewBox=0 0 24 24><polyline points=20 6 9 17 4 12/></svg> عارض دراسات الأشعة التفاعلي (شرائح 1-24، تكبير، تدوير، قياس)</li>
+ <li><svg viewBox=0 0 24 24><polyline points=20 6 9 17 4 12/></svg> تبديل سهل وفوري بين واجهة المريض وواجهة الطبيب</li>
+ </ul>
+ <a class=btn btn-teal href=./archive-platform/>
+ <span>الدخول لمنصة الأرشيف</span>
+ <svg viewBox=0 0 24 24><line x1=5 y1=12 x2=19 y2=12/><polyline points=12 5 19 12 12 19/></svg>
+ </a>
+ </article>
+ </div>
+
+ <div class=quick-info>
+ <div>
+ <strong>خيارات النشر:</strong> يمكنك رفع هذا المجلد بالكامل كمشروع واحد على Vercel، أو رفع كل مجلد منصة بشكل منفصل.
+ </div>
+ <div class=info-tags>
+ <span class=info-tag>Vercel Ready</span>
+ <span class=info-tag>Static Buildless</span>
+ <span class=info-tag>Zero Dependencies</span>
+ <span class=info-tag>20 Security Rules</span>
+ </div>
+ </div>
+ </main>
+
+ <footer class=footer>
+ <strong>MNU 333</strong> · جامعة المنصورة الجديدة · مساحة الرعاية السريرية والأرشيف الطبي التفاعلي · 2026
+ </footer>
+</body>
+</html>

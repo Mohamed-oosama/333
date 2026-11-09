@@ -1,0 +1,16 @@
+{
+  "name": "mnu333-main-platform",
+  "version": "1.0.0",
+  "description": "MNU 333 — Clinical Care & 7-Model Hospital Platform",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "hospital",
+    "clinical",
+    "mnu333",
+    "healthcare"
+  ],
+  "license": "MIT"
+}

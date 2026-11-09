@@ -1,0 +1,414 @@
+/* Hospital workspace: user-supplied navy / teal reference, compact density. */
+:root{--primary:#946318;--primary-hover:#754c12;--primary-dark:#6b450f;--primary-light:#fbf3e5;--primary-subtle:#f1dfb6;--blue:#3479ce;--ink:#172d45;--ink-secondary:#4b6075;--muted:#718196;--canvas:#f3f6fa;--line:#e5eaf0;--line-light:#f2f5f8;--radius:7px;--radius-lg:9px;--shadow-sm:0 2px 7px #20344a06;--navy:#0c2344}
+body{font-size:13px}h1{font-size:22px}h2{font-size:18px}h3{font-size:14px}.button{font-size:12px;min-height:36px;padding:8px 14px;gap:7px;border-radius:5px}.button.small{font-size:11px;min-height:31px;padding:6px 10px}.button .icon{width:16px;height:16px}.icon{width:18px;height:18px}.input{border-radius:5px;min-height:34px;padding:7px 9px;font-size:12px}.field>span{font-size:11px;margin-bottom:5px}.badge{font-size:10px;padding:2px 7px;line-height:1.6;border-radius:5px}.badge.teal{color:#946318;background:#fbf3e5}.badge.emerald{color:#238057;background:#e9f7ef}.badge.amber{color:#946110;background:#fff4da}.badge.sky{color:#3479b9;background:#eaf3fc}.text-link{font-size:11px;gap:5px}.text-link .icon{width:14px;height:14px}.icon-btn{width:34px;height:34px}
+.clinical-shell{display:grid;grid-template-columns:184px minmax(0,1fr);direction:ltr;height:100dvh;overflow:hidden;background:var(--canvas)}
+.clinical-sidebar{direction:rtl;display:flex;flex-direction:column;min-height:0;background:var(--navy);color:#dce8f4;padding:22px 11px 12px;z-index:110;overflow:hidden}
+.hospital-brand{display:flex;align-items:center;gap:10px;color:white;padding:0 8px 32px;direction:ltr}.hospital-brand:hover{color:white}.brand-mark{width:31px;height:34px;border-radius:7px;background:#fffaf0;color:#1d6788;display:flex;align-items:center;justify-content:center;flex:none}.brand-mark .icon{width:27px;height:27px}.hospital-brand strong{display:block;font:800 22px/1.1 var(--font-en);letter-spacing:-1px}.hospital-brand small{font-size:9px;display:block;margin-top:5px;color:#cfdee9;direction:rtl;text-align:left}.side-section{font-size:10px;color:#90acc5;padding:4px 12px 10px;direction:rtl}
+.clinical-nav{display:flex;flex-direction:column;gap:5px;overflow:auto;scrollbar-width:none}.clinical-nav>a{min-height:42px;display:flex;gap:12px;align-items:center;padding:10px 11px;border-radius:5px;color:#d8e5f0;white-space:nowrap;font-size:12px;font-weight:500;direction:rtl}.clinical-nav>a:hover{background:#ffffff0d;color:#fff}.clinical-nav>a.active{background:#946318;color:#fff}.clinical-nav .icon{width:18px;height:18px}.nav-count{font:500 10px var(--font-en);background:#ffffff21;padding:3px 5px;border-radius:4px;margin-inline-start:auto}
+.sidebar-bottom{margin-top:auto;padding-top:24px}.sidebar-profile{display:flex;align-items:center;gap:9px;padding:14px 7px;border-top:1px solid #ffffff1a;direction:rtl}.sidebar-profile strong{font-size:11px;display:block;color:#fff}.sidebar-profile small{display:block;font-size:9px;color:#98b3ca;margin-top:2px}.doctor-photo{width:36px;height:36px;object-fit:cover;border-radius:50%;flex:none;border:2px solid #fff}.sidebar-collapse,.sidebar-exit{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;font-size:11px;padding:8px;color:#c7d8e8;border:1px solid #ffffff2d;border-radius:5px;white-space:nowrap}.sidebar-exit{border:0;font-size:10px;margin-top:3px;padding:7px}.sidebar-collapse:hover,.sidebar-exit:hover{background:#ffffff0c}.sidebar-collapse .icon,.sidebar-exit .icon{width:15px;height:15px}
+.clinical-workspace{direction:rtl;min-width:0;min-height:0;display:flex;flex-direction:column}.clinical-topbar{height:72px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:20px;background:#fbfcfe;border-bottom:1px solid var(--line);padding:0 19px;position:relative;z-index:90}.topbar-heading{display:flex;align-items:center;gap:10px;min-width:140px}.topbar-heading h1{font-size:19px;margin:0;font-weight:600;line-height:1.4}.topbar-heading p{font-size:10px;color:var(--muted);margin:3px 0 0}.topbar-heading .menu-trigger{display:none}.global-search{display:flex;align-items:center;gap:7px;width:320px;background:#fff;border:1px solid var(--line);border-radius:5px;padding:7px 9px;color:#9aa8b7}.global-search input{min-width:0;width:100%;border:0;background:none;outline:0;font-size:11px}.global-search kbd{font:9px var(--font-en);white-space:nowrap;border:1px solid var(--line);border-radius:3px;padding:3px;color:#5b6d7e}.topbar-tools{display:flex;align-items:center;gap:14px}.locale-label{font-size:10px}.topbar-profile{display:flex;gap:8px;align-items:center;min-width:135px}.topbar-profile strong{display:block;font-size:11px;white-space:nowrap}.topbar-profile small{font-size:9px;color:var(--muted);display:block}.topbar-profile .doctor-photo{width:33px;height:33px}.notification-trigger{position:relative;color:#487ba9}.notification-dot{position:absolute;width:6px;height:6px;background:#dd5c5c;border-radius:50%;top:6px;right:7px;border:1px solid white}
+.clinical-workspace #main{max-width:none;width:100%;padding:14px;min-height:0;overflow:auto;margin:0;flex:1}.clinical-workspace .app-footer{margin:0 14px;padding:7px 0;font-size:9px;line-height:1.3;color:#7c8da0;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex:none}.clinical-workspace #main[data-route=dashboard]{display:flex;flex-direction:column;gap:14px;overflow:hidden}.clinical-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;flex:none}.metric-card{background:white;min-height:88px;display:grid;grid-template-columns:35px 1fr;column-gap:10px;align-items:center;padding:13px 16px 10px;border:1px solid #e9eef4;border-radius:6px;box-shadow:var(--shadow-sm)}.metric-symbol{width:33px;height:33px;display:flex;align-items:center;justify-content:center;background:#fbf3e5;border-radius:8px;color:#946318}.metric-symbol .icon{width:24px;height:24px}.metric-card>div>span{font-size:10px;display:block;font-weight:500}.metric-card strong{font:700 24px/1.35 var(--font-en);display:block;margin-top:2px}.metric-card>small{grid-column:1/-1;font-size:9px;color:var(--muted);margin-top:8px}.metric-card.amber .metric-symbol{background:#fff6e4;color:#e0a135}.metric-card.green .metric-symbol{background:#edf9ef;color:#2d9e62}.metric-card.blue .metric-symbol{background:#edf4ff;color:#4085db}
+.workspace-panel{min-width:0;background:#fff;border:1px solid #e7edf3;border-radius:6px;box-shadow:var(--shadow-sm);overflow:hidden}.panel-title{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:12px 13px;border-bottom:1px solid #eef2f6;min-height:45px;flex:none}.panel-title h2{font-size:12px;margin:0;font-weight:600}.panel-title .text-link{font-size:9px;padding:0}.panel-bottom{border-top:1px solid #edf1f6;display:flex;align-items:center;justify-content:space-between;padding:10px 13px;gap:8px;flex:none;font-size:10px;color:var(--muted)}.panel-bottom .text-link{font-size:10px}.quiet-empty{font-size:11px;color:var(--muted);text-align:center;padding:16px 10px;line-height:1.8;margin:0}
+.doctor-grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(235px,1fr) minmax(275px,1.16fr) minmax(245px,.96fr);gap:12px;direction:ltr}.doctor-grid>*,.schedule-secondary>*{direction:rtl}.schedule-column{min-height:0;display:flex;flex-direction:column;gap:12px}.schedule-panel{display:flex;flex-direction:column;min-height:215px;flex:1.4}.schedule-search{display:flex;align-items:center;gap:6px;margin:9px 10px 5px;background:#f9fbfd;border:1px solid #e8edf3;padding:5px 7px;border-radius:4px;color:#92a2b3}.schedule-search input{border:0;background:none;width:100%;min-width:0;outline:0;font-size:10px}.schedule-search .icon{width:14px;height:14px}.schedule-list{overflow:auto;min-height:0;padding:0 8px 7px;scrollbar-width:thin}.schedule-row{display:flex;align-items:center;gap:7px;width:100%;text-align:start;border-bottom:1px solid #eef2f7;padding:8px 4px;min-height:49px;border-radius:3px;color:var(--ink)}.schedule-row:hover{background:#f5f9fc}.schedule-row.selected{background:#eef8f7;box-shadow:inset -2px 0 #946318}.schedule-row time{font:500 10px var(--font-en);width:35px;flex:none}.person-avatar{display:inline-flex;align-items:center;justify-content:center;flex:none;border-radius:50%;width:29px;height:29px;background:#ece5fa;color:#8863ae;font-size:11px;font-weight:500;line-height:1}.person-avatar.tone-1{background:#fce7eb;color:#c77d8f}.person-avatar.tone-2{background:#e0f0fd;color:#5a8bba}.person-avatar.tone-3{background:#e1f4ed;color:#548b7a}.person-avatar.tone-4{background:#fff1d6;color:#a88a4a}.person-avatar.large{width:45px;height:45px;font-size:17px}.schedule-person{min-width:0;flex:1}.schedule-person strong{font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.schedule-person small{font-size:9px;color:#7c8da1;display:block}.schedule-row .badge{font-size:8px;padding:2px 4px;max-width:72px;white-space:normal;text-align:center;line-height:1.4}.schedule-secondary{display:grid;grid-template-columns:1.15fr 1fr;min-height:180px;flex:1;gap:10px}.activity-panel,.quick-panel{display:flex;flex-direction:column}.activity-list{overflow:auto;min-height:0}.activity-item{display:flex;gap:8px;align-items:flex-start;padding:10px 11px;border-bottom:1px solid #f0f3f6}.activity-item>span{display:flex;align-items:center;justify-content:center;color:#946318;background:#e8f7f1;width:24px;height:26px;border-radius:50%;flex:none}.activity-item .icon{width:15px;height:15px}.activity-item strong{font-size:10px;font-weight:500;display:block}.activity-item small{font-size:9px;color:#8794a6;display:block;margin-top:3px;line-height:1.6}.quick-grid{display:grid;grid-template-columns:repeat(2,1fr);padding:8px;gap:5px;flex:1}.quick-grid a,.quick-grid button{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;font-size:9px;color:#457cb4;border:1px solid #edf1f7;border-radius:4px;text-align:center;padding:5px 2px}.quick-grid a:hover,.quick-grid button:hover{background:#f1f7fc}.quick-grid .icon{width:18px;height:18px}
+.patient-overview{display:flex;flex-direction:column;min-height:0}.patient-overview-head{display:flex;gap:10px;padding:17px 14px 13px;align-items:center}.patient-overview-head>div{min-width:0}.patient-title-line{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.patient-title-line h2{font-size:16px;line-height:1.5;margin:0}.patient-title-line .badge{font-size:8px}.patient-overview-head p{font-size:10px;color:var(--muted);margin:4px 0}.patient-overview-head small{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--muted)}.patient-overview-head .icon{width:12px;height:12px}.patient-tabs{display:flex;gap:14px;padding:0 14px;border-bottom:1px solid var(--line);flex:none;min-height:39px}.patient-tabs button{font-size:10px;padding:10px 0;border-bottom:2px solid transparent;color:#6e8196;white-space:nowrap}.patient-tabs button.active{border-color:#946318;color:#946318;font-weight:600}.patient-overview-content{flex:1;min-height:0;overflow:auto;padding:14px;scrollbar-width:thin}.patient-data-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:12px}.patient-facts{margin:0;font-size:10px}.patient-facts>div{margin-bottom:10px}.patient-facts dt{font-size:9px;color:#8090a1;margin-bottom:3px}.patient-facts dd{margin:0;font-weight:500;font-size:10px;overflow-wrap:anywhere}.mini-vitals{border:1px solid #edf1f5;border-radius:5px;padding:10px;align-self:start}.mini-vitals h3{font-size:10px;margin:0 0 8px}.mini-vitals dl{margin:0}.mini-vitals dl>div{display:flex;justify-content:space-between;gap:4px;margin-bottom:10px;font-size:9px}.mini-vitals dt{color:var(--muted)}.mini-vitals dd{margin:0;white-space:nowrap;font-size:10px;font-weight:500}.mini-vitals dd small{font-size:8px;color:#8a99a8}.mini-vitals .text-link{font-size:9px;padding:2px 0}.mini-vitals .quiet-empty{font-size:10px;padding:9px 0}.medical-history{margin-top:16px}.medical-history h3{font-size:11px;margin-bottom:12px}.medical-history ol{list-style:none;padding:0;margin:0}.medical-history li{display:flex;align-items:flex-start;gap:9px;padding:0 0 18px;position:relative}.medical-history li:not(:last-child):before{content:'';position:absolute;right:10px;top:21px;bottom:0;width:1px;background:#dee6ef}.history-point{background:#ebf5f8;color:#a9751f;display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;flex:none;z-index:1}.history-point.approved{background:#e3f5eb;color:#359666}.history-point .icon{width:12px;height:12px}.medical-history li>div{flex:1;min-width:0}.medical-history strong{font-size:10px;display:block}.medical-history small{font-size:9px;color:var(--muted);display:block;margin-top:2px}.medical-history p{font-size:10px;color:#6b7f91;margin:4px 0 0}.medical-history .badge{font-size:8px;margin-top:3px}.medical-history .button{font-size:9px;min-height:22px;padding:2px 5px}.order-line{display:flex;gap:9px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line-light)}.order-line>div{flex:1}.order-line strong{font-size:11px;display:block}.order-line small{font-size:10px;color:var(--muted)}
+.consultation-panel{display:flex;flex-direction:column;min-height:0}.consultation-panel>.panel-title{background:#f9fbfd}.consultation-panel .panel-title .badge{font-size:8px}.compact-encounter{display:flex;flex-direction:column;flex:1;min-height:0}.consultation-fields{flex:1;min-height:0;overflow:auto;padding:12px;scrollbar-width:thin}.consultation-fields .field{margin-bottom:9px;display:block}.consultation-fields .field>span{font-size:10px;display:block;margin-bottom:4px;font-weight:500}.consultation-fields .input{min-height:30px;padding:6px 8px;font-size:10px;border-color:#e2e9f1;line-height:1.55}.consultation-fields textarea{resize:vertical;min-height:48px}.consultation-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:11px 12px 5px;border-top:1px solid #e8eef4;flex:none}.consultation-actions .button{font-size:10px;padding:7px 5px;white-space:nowrap}.consultation-actions .icon{width:13px;height:13px}.consultation-note{font-size:8px;color:#8492a3;text-align:center;margin:6px 4px 10px}.consultation-note .icon{width:10px;height:10px}
+.clinical-workspace #main[data-route=patients]{display:flex;flex-direction:column;gap:14px;overflow:hidden}.registry-toolbar{display:flex;align-items:flex-end;gap:15px;padding:12px 14px;flex:none}.registry-toolbar>label{min-width:120px;flex:1}.registry-toolbar>label>span{display:block;font-size:10px;margin-bottom:5px;font-weight:500}.registry-toolbar .registry-search{flex:2}.registry-search>div{display:flex;align-items:center;border:1px solid var(--line);border-radius:5px;min-height:34px;padding:5px 9px;gap:6px}.registry-search .icon{color:#8a9aab;width:15px;height:15px}.registry-search input{border:0;outline:0;width:100%;font-size:11px;background:none;min-width:0}.registry-toolbar select{font-size:11px}.registry-toolbar>.button{min-height:34px;white-space:nowrap}.registry-layout{direction:ltr;display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:14px;min-height:0;flex:1}.registry-layout>*{direction:rtl}.registry-table-panel{display:flex;flex-direction:column;min-height:0}.registry-table-scroll{overflow:auto;flex:1;min-height:0}.registry-table{width:100%;border-collapse:collapse;min-width:620px}.registry-table th{font-size:9px;background:#fafbfd;padding:12px 10px;font-weight:600;white-space:nowrap;color:#51667c}.registry-table td{font-size:10px;padding:12px 10px;border-top:1px solid #eef2f6;vertical-align:middle}.registry-table td small{font-size:9px;display:block;color:var(--muted);margin-top:3px}.registry-table tr.selected td{background:#fcf8ef}.registry-table td .badge{font-size:8px;white-space:nowrap}.registry-person{display:flex;align-items:center;gap:8px;text-align:start;padding:0;color:var(--ink)}.registry-person strong{font-size:11px;white-space:nowrap}.registry-person .person-avatar{width:28px;height:28px}.registry-person small{direction:ltr;text-align:right}.record-counters{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:17px}.record-counters>div{text-align:center;padding:8px;border:1px solid #ebeff5;border-radius:5px}.record-counters strong{display:block;font:600 18px var(--font-en)}.record-counters small{display:block;font-size:8px;color:var(--muted);margin-top:4px}
+.notifications-popover{position:absolute;top:63px;left:20px;width:290px;background:white;box-shadow:0 8px 24px #1c385526;border:1px solid var(--line);border-radius:6px;z-index:120;max-height:400px;overflow:auto}.notifications-popover .panel-title{padding:8px 12px}.notifications-popover .activity-item{padding:13px}.notifications-popover .activity-item strong{font-size:11px}.notifications-popover .activity-item small{font-size:10px}.notifications-popover .activity-item a{font-size:10px}
+.clinical-workspace .page-head{margin-bottom:17px;min-height:0}.clinical-workspace .page-head h1{font-size:21px}.clinical-workspace .page-head .subtitle{font-size:12px}.clinical-workspace .eyebrow-tag{display:none}.clinical-workspace .card{border:1px solid var(--line);border-radius:7px;box-shadow:var(--shadow-sm)}.clinical-workspace .card-header,.clinical-workspace .card-body{padding:15px}.clinical-workspace .card-header h2{font-size:14px}.clinical-workspace .model-grid{gap:14px}.clinical-workspace .model-card{padding:20px}.clinical-workspace .model-card h3{font-size:17px}.clinical-workspace .model-card p{font-size:12px}.clinical-workspace .service-note{font-size:11px;padding:12px;margin-bottom:16px}.clinical-workspace .service-note p{font-size:11px}.clinical-workspace .patient-banner{padding:18px}.clinical-workspace .patient-banner h2{font-size:22px}.clinical-workspace .tabs .tab{font-size:12px}.clinical-workspace .stats-grid{gap:12px}.clinical-workspace .stat-card-value{font-size:26px}
+body[data-surface=patient] .clinical-workspace #main{max-width:none;padding:24px}.patient-welcome{margin-bottom:22px}.patient-welcome h1{font-size:26px;margin:8px 0}.patient-welcome h1 br{display:none}.patient-welcome p{font-size:13px}.portal-layout{gap:20px}.next-appointment{background:#fbf3e5;border:1px solid #d6eeea;border-radius:7px;padding:25px;min-height:0}.next-appointment h2{font-size:25px;margin-top:20px}.appointment-time{font-size:16px}.appointment-doctor{border-color:#cae4df;margin:18px 0;padding-top:18px}.appointment-doctor strong{font-size:14px}.patient-guidance{padding:23px;border-radius:7px}.section-heading h2{font-size:18px}.patient-guidance .portal-empty h3{font-size:16px}.patient-guidance .portal-empty p{font-size:12px}.patient-profile-strip{padding:20px 0;margin-top:20px}.shared-plan p{font-size:13px}.auth-doctor{--primary:#946318;--primary-hover:#754c12;--primary-light:#fbf3e5}.auth-doctor .auth-story{background:#0c2344;border:0;color:#fff}.auth-doctor .auth-story h1{color:white}.auth-doctor .auth-story h1 em{color:#d2a145}.auth-doctor .auth-description,.auth-doctor .auth-benefit p,.auth-doctor .auth-story-foot span{color:#b8ccdf}.auth-doctor .auth-eyebrow,.auth-doctor .auth-benefit>.icon{color:#d2a145}.auth-doctor .auth-story-foot{border-color:#ffffff24}.auth-patient .auth-story{background:#fbf3e5}.auth-story h1,.auth-doctor .auth-story h1{font-size:35px}.auth-header .wordmark strong{font-size:25px}.auth-header{height:70px}.auth-header nav a[aria-current]{color:var(--primary)}.auth-page .login-submit{font-size:13px}.auth-page .login-form-wrap h2{font-size:25px}
+.side-collapsed{grid-template-columns:65px minmax(0,1fr)}.side-collapsed .side-label{display:none}.side-collapsed .clinical-sidebar{padding-inline:8px}.side-collapsed .hospital-brand{padding:0 8px 32px}.side-collapsed .clinical-nav>a{justify-content:center;padding:11px}.side-collapsed .sidebar-profile{justify-content:center;padding-inline:0}.side-collapsed .sidebar-collapse .icon{transform:rotate(180deg)}.sidebar-scrim,.mobile-bottom{display:none}
+@media(min-width:1500px){.clinical-shell{grid-template-columns:208px minmax(0,1fr)}.clinical-shell.side-collapsed{grid-template-columns:65px minmax(0,1fr)}.clinical-workspace #main{padding:18px}.doctor-grid{gap:16px}.schedule-row{min-height:56px}.metric-card{min-height:95px}.patient-title-line h2{font-size:19px}.patient-facts,.patient-facts dd{font-size:12px}.patient-facts dt{font-size:11px}.consultation-fields .field>span{font-size:12px}.consultation-fields .input{font-size:12px;min-height:36px}.consultation-fields .field{margin-bottom:12px}.medical-history strong{font-size:12px}.medical-history p{font-size:11px}.schedule-person strong{font-size:12px}.schedule-row .badge{font-size:9px}.panel-title h2{font-size:14px}}
+@media(max-width:1180px) and (min-width:901px){.clinical-shell{grid-template-columns:156px minmax(0,1fr)}.clinical-shell.side-collapsed{grid-template-columns:65px minmax(0,1fr)}.clinical-nav>a{font-size:11px;gap:8px;padding:9px 7px}.hospital-brand{padding-inline:3px;gap:7px}.hospital-brand strong{font-size:19px}.global-search{width:240px}.topbar-profile{min-width:0}.topbar-profile>div{display:none}.topbar-tools{gap:7px}.doctor-grid{grid-template-columns:minmax(210px,1fr) minmax(245px,1.15fr) minmax(230px,1fr);gap:9px}.schedule-row .person-avatar{display:none}.schedule-row{gap:5px}.schedule-secondary{grid-template-columns:1fr}.activity-panel{display:none}.metric-card{padding:12px 10px;gap:7px}.metric-card>div>span{font-size:9px}.registry-layout{grid-template-columns:minmax(0,1.6fr) minmax(265px,1fr)}}
+@media(max-width:900px){.clinical-shell,.clinical-shell.side-collapsed{grid-template-columns:minmax(0,1fr)}.clinical-sidebar{position:fixed;top:0;bottom:0;left:0;width:210px;visibility:hidden;transform:translateX(-100%);transition:transform .18s}.clinical-sidebar.open{visibility:visible;transform:translateX(0)}.clinical-sidebar.open~.sidebar-scrim{display:block;position:fixed;inset:0;background:#0c234455;z-index:105}.side-collapsed .side-label{display:block}.side-collapsed .clinical-nav>a{justify-content:flex-start}.side-collapsed .sidebar-profile{justify-content:flex-start}.sidebar-collapse{display:none}.topbar-heading .menu-trigger{display:inline-flex}.clinical-topbar{height:64px;padding:0 15px;gap:12px}.topbar-heading h1{font-size:17px}.topbar-tools{gap:7px}.global-search{width:230px}.global-search kbd{display:none}.topbar-profile{min-width:0}.topbar-profile>div{display:none}.clinical-workspace #main[data-route=dashboard]{overflow:auto;display:block}.clinical-metrics{margin-bottom:14px}.doctor-grid{grid-template-columns:minmax(240px,1fr) minmax(280px,1.2fr);grid-template-rows:auto;align-items:stretch}.schedule-column,.patient-overview{min-height:470px}.schedule-panel{max-height:340px}.schedule-secondary{min-height:180px}.consultation-panel{grid-column:1/-1;min-height:0}.consultation-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;overflow:visible}.consultation-fields .field{margin:0}.consultation-actions{display:flex;justify-content:flex-end}.consultation-actions .button{min-width:135px}.clinical-workspace #main[data-route=patients]{overflow:auto;display:block}.registry-toolbar{flex-wrap:wrap;margin-bottom:14px}.registry-layout{display:block}.registry-layout .patient-overview{min-height:0;margin-top:15px}.registry-table-scroll{max-height:460px}.registry-layout .patient-data-grid{grid-template-columns:1fr 1fr}.registry-toolbar>label{min-width:160px}.registry-toolbar>.registry-search{flex-basis:100%}.registry-toolbar>.button{margin-inline-start:auto}.clinical-workspace .app-footer>span:first-child{display:none}.clinical-workspace .app-footer{justify-content:center}.auth-story h1,.auth-doctor .auth-story h1{font-size:32px}}
+@media(max-width:600px){.clinical-topbar{height:60px;padding:0 12px;gap:6px}.topbar-heading{min-width:0;gap:6px}.topbar-heading h1{font-size:15px}.topbar-heading p{font-size:8px}.topbar-tools{gap:1px}.topbar-profile .doctor-photo,.topbar-profile .person-avatar{width:27px;height:27px}.locale-label{display:none}.global-search{display:none}.clinical-workspace #main,.clinical-workspace #main[data-route=dashboard],body[data-surface=patient] .clinical-workspace #main{padding:12px}.clinical-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.metric-card{min-height:79px;padding:10px;column-gap:8px;grid-template-columns:30px 1fr}.metric-card strong{font-size:22px}.metric-card>div>span{font-size:10px}.metric-card>small{font-size:9px;margin-top:5px}.metric-symbol{width:28px;height:28px}.metric-symbol .icon{width:21px;height:21px}.doctor-grid{display:flex;flex-direction:column;gap:12px}.schedule-column{min-height:0;gap:12px}.schedule-panel{max-height:none;min-height:0}.schedule-list{max-height:310px}.schedule-row{min-height:53px;gap:10px}.schedule-person strong{font-size:12px}.schedule-person small{font-size:10px}.schedule-row .badge{font-size:9px;max-width:none}.schedule-secondary{min-height:0;display:block}.activity-panel{display:none}.quick-grid{grid-template-columns:repeat(3,1fr);gap:7px;padding:9px}.quick-grid a,.quick-grid button{min-height:58px;font-size:10px}.quick-panel .panel-title{min-height:38px;padding:9px 12px}.patient-overview{min-height:0}.patient-overview-head{padding:16px}.patient-overview-content{max-height:none;overflow:visible;padding:16px}.patient-title-line h2{font-size:18px}.patient-title-line .badge{font-size:9px}.patient-tabs{gap:28px}.patient-tabs button{font-size:12px}.patient-facts dt{font-size:11px}.patient-facts dd{font-size:12px}.mini-vitals h3{font-size:12px}.mini-vitals dl>div,.mini-vitals dd{font-size:11px}.mini-vitals .text-link{font-size:10px}.medical-history h3{font-size:13px}.medical-history strong{font-size:12px}.medical-history small,.medical-history p{font-size:10px}.medical-history .badge{font-size:9px}.consultation-fields{grid-template-columns:1fr;padding:14px}.consultation-fields .field>span{font-size:12px}.consultation-fields .input{font-size:13px;min-height:40px}.consultation-fields textarea{min-height:65px}.consultation-actions{display:grid;grid-template-columns:1fr 1fr;padding:12px 14px 5px}.consultation-actions .button{min-width:0;font-size:12px;min-height:40px}.consultation-note{font-size:10px}.clinical-workspace .app-footer{margin:0;padding:5px 12px;font-size:8px}.mobile-bottom{display:flex;flex:none;justify-content:space-around;background:#fff;border-top:1px solid var(--line);padding:8px 6px max(8px,env(safe-area-inset-bottom));gap:4px}.mobile-bottom a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:1;color:#8294a8;font-size:9px;min-height:37px}.mobile-bottom a.active{color:#946318;font-weight:600}.mobile-bottom .icon{width:20px;height:20px}.registry-toolbar{gap:10px;padding:12px}.registry-toolbar>label{min-width:120px}.registry-toolbar>label>span{font-size:11px}.registry-table{min-width:650px}.registry-layout .patient-data-grid{grid-template-columns:1fr 1fr}.record-counters strong{font-size:20px}.record-counters small{font-size:10px}.notifications-popover{left:10px;right:10px;top:55px;width:auto}.clinical-workspace .page-head h1{font-size:20px}.clinical-workspace .page-head{gap:10px}.clinical-workspace .page-head .subtitle{font-size:12px}.clinical-workspace .card-header h2{font-size:14px}.patient-welcome h1{font-size:23px}.patient-welcome p{font-size:12px}.portal-layout{gap:14px}.next-appointment,.patient-guidance{padding:20px}.next-appointment h2{font-size:24px}.patient-profile-strip{gap:10px}.patient-profile-strip .button{font-size:10px}.patient-profile-strip span{font-size:11px}.auth-story h1,.auth-doctor .auth-story h1{font-size:29px}}
+/* Compact the clinical content so the history and all quick actions remain visible. */
+@media(min-width:901px){
+ .doctor-grid .panel-title{min-height:39px;padding:10px 12px}
+ .doctor-grid .panel-title .text-link{min-height:0;padding:0;border:0}
+ .schedule-panel{flex:1.7}.schedule-secondary{flex:1;min-height:165px}
+ .schedule-row{min-height:34px;padding:3px 4px;line-height:1.3}.schedule-row .person-avatar{width:24px;height:24px;font-size:9px}
+ .schedule-person strong{line-height:1.4}.schedule-person small{line-height:1.4}
+ .schedule-search{margin-top:7px;margin-bottom:4px;padding:4px 6px}
+ .quick-grid{padding:6px;gap:4px;min-height:0}.quick-grid a,.quick-grid button{padding:3px 2px;gap:2px;line-height:1.35}.quick-grid .icon{width:16px;height:16px}
+ .activity-item{padding:8px 9px}.activity-item small{font-size:8px;line-height:1.4}
+ .patient-facts>div{display:grid;grid-template-columns:45% 1fr;gap:5px;margin-bottom:11px;align-items:start}.patient-facts dt{margin:0}.patient-facts dd{font-size:10px}
+ .patient-overview-head{padding-block:13px 10px}.patient-overview-content{padding-top:12px}.medical-history{margin-top:12px}
+ .consultation-fields{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:start}.consultation-fields .field{margin-bottom:0;grid-column:1/-1;min-width:0}.consultation-fields .field:nth-last-child(-n+2){grid-column:auto}
+ .consultation-fields .field>span{line-height:1.4;margin-bottom:3px}
+ .consultation-fields .input{min-height:28px;line-height:1.4;padding:5px 7px}
+ .consultation-fields textarea.input{display:block;height:42px;min-height:42px}
+ .consultation-actions{padding-top:9px}.consultation-note{margin-block:5px 8px}
+}
+@media(prefers-reduced-motion:reduce){.clinical-sidebar{transition:none}}
+
+/* Public hospital entry and the patient's compact personal dashboard. */
+.hospital-home{height:100dvh;display:flex;flex-direction:column;overflow:hidden;background:#f3f6fa}.hospital-public-header{height:72px;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:0 max(28px,calc((100vw - 1180px)/2));background:#fff;border-bottom:1px solid var(--line);flex:none}.hospital-public-header .hospital-brand{padding:0;color:var(--navy)}.hospital-public-header .hospital-brand small{color:#7790a3}.hospital-public-header .brand-mark{background:#fbf3e5;color:#946318}.hospital-public-header nav{display:flex;gap:28px;margin-inline-start:auto}.hospital-public-header nav a{font-size:12px;color:#4c627a}.hospital-home-main{width:100%;max-width:1180px;margin:0 auto;padding:24px 28px;flex:1;min-height:0;overflow:auto}.hospital-welcome{margin-bottom:20px}.hospital-welcome h1{font-size:30px;margin:6px 0;color:#183a53;font-weight:600}.hospital-welcome p{font-size:13px;color:var(--muted);margin:0}.hospital-entry-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:20px}.hospital-booking-intro{background:#fff;border:1px solid var(--line);border-top:3px solid #946318;border-radius:7px;padding:22px 26px}.hospital-booking-intro h2{font-size:22px;margin:10px 0 6px}.hospital-booking-intro>p{font-size:12px;color:var(--muted)}.hospital-booking-intro ol{list-style:none;margin:16px 0 20px;padding:0;display:flex;gap:15px}.hospital-booking-intro li{flex:1;display:flex;flex-direction:column;gap:10px}.hospital-booking-intro li>span{font:600 14px var(--font-en);color:#946318}.hospital-booking-intro strong{font-size:12px;display:block}.hospital-booking-intro li small{font-size:10px;color:var(--muted);display:block;margin-top:5px;line-height:1.8}.hospital-booking-intro>.text-link{margin-inline-start:18px;font-size:11px}.hospital-clinic{background:#fff;border:1px solid var(--line);border-radius:7px;overflow:hidden;display:flex;flex-direction:column}.hospital-clinic .panel-title{background:#0c2344;color:#fff;padding:13px 20px}.clinic-description{padding:16px 20px 0}.clinic-description h3{font-size:16px;margin:0 0 5px}.clinic-description p{font-size:11px;color:var(--muted);margin:0}.clinic-doctor{display:flex;gap:11px;align-items:center;padding:15px 20px}.clinic-doctor .doctor-photo{width:45px;height:45px;border:1px solid var(--line)}.clinic-doctor strong{display:block;font-size:13px}.clinic-doctor span{display:block;color:var(--muted);font-size:10px;margin-top:3px}.clinic-services{display:flex;flex-wrap:wrap;gap:12px;padding:0 20px 17px;font-size:10px;color:#5b7286}.clinic-services>div{display:flex;align-items:center;gap:5px}.clinic-services .icon{width:15px;height:15px;color:#a9751f}.doctor-entry{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 20px;background:#f8fafc;border-top:1px solid var(--line);margin-top:auto}.doctor-entry strong{font-size:12px}.doctor-entry p{font-size:10px;color:var(--muted);margin:3px 0 0}.hospital-service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:18px}.hospital-service-grid article{display:flex;gap:12px;padding:16px;background:#fff;border:1px solid var(--line);border-radius:6px}.hospital-service-grid article>.icon{width:23px;height:23px;color:#946318;margin-top:4px}.hospital-service-grid h3{font-size:13px;margin:0 0 6px}.hospital-service-grid p{font-size:10px;color:var(--muted);margin:0;line-height:1.8}.hospital-public-footer{display:flex;justify-content:space-between;gap:16px;padding:11px 28px;flex:none;background:#fff;border-top:1px solid var(--line);font-size:10px;color:var(--muted)}.hospital-public-footer strong{color:var(--navy);font-family:var(--font-en)}.patient-metrics{grid-template-columns:repeat(3,1fr);margin-bottom:20px}.patient-metrics .metric-card{min-height:85px}.patient-welcome h1{font-size:25px}.patient-welcome{margin-bottom:18px}
+@media(max-width:700px){.hospital-public-header{padding:0 16px;height:65px;gap:12px}.hospital-public-header .hospital-brand strong{font-size:20px}.hospital-public-header .hospital-brand small{font-size:8px}.hospital-public-header .brand-mark{width:27px;height:30px}.hospital-public-header nav{display:none}.hospital-public-header>.button{font-size:10px;min-height:33px;padding:7px 10px}.hospital-home-main{padding:22px 16px}.hospital-welcome h1{font-size:25px;line-height:1.5}.hospital-welcome p{font-size:12px}.hospital-entry-grid{grid-template-columns:1fr;gap:15px}.hospital-booking-intro{padding:20px}.hospital-booking-intro ol{gap:10px}.hospital-booking-intro li small{font-size:10px}.hospital-booking-intro>.text-link{display:flex;margin:13px 0 0}.hospital-service-grid{grid-template-columns:1fr;gap:10px}.hospital-public-footer{font-size:8px;padding:10px 16px;gap:8px}.patient-metrics{grid-template-columns:1fr 1fr}.patient-metrics .metric-card:last-child{grid-column:1/-1}.patient-welcome h1{font-size:21px}}
+
+/* University identity: supplied emblem, restrained gold on navy. */
+.brand-logo{display:block;width:40px;height:40px;object-fit:contain;flex:none;border-radius:50%;background:#fff;border:1px solid #d9b168}
+.hospital-brand{gap:9px}.clinical-sidebar .brand-logo{width:39px;height:39px}.hospital-public-header .brand-logo{width:42px;height:42px}
+.wordmark{display:flex;flex-direction:row;align-items:center;gap:10px;direction:ltr}.wordmark-copy{display:flex;flex-direction:column}.wordmark-copy>span{direction:rtl}
+.auth-header .brand-logo{width:43px;height:43px}
+@media(max-width:700px){.hospital-public-header .brand-logo,.auth-header .brand-logo{width:33px;height:33px}}
+
+/* MNU 333 palette refinement requested after the logo review. */
+:root{--primary:#c6942e;--primary-hover:#b38222;--primary-dark:#946318;--blue:#0d2345;--ink:#0d2345;--muted:#6b7280}
+.brand-logo{border:0;background:transparent;object-fit:cover}
+.button.primary,.button.primary:hover{color:#0d2345;font-weight:700}
+.button.primary{background:#c6942e;border-color:#c6942e}
+.button.primary:hover{background:#b38222;border-color:#b38222}
+.clinical-nav>a.active{background:#c6942e;color:#0d2345;font-weight:700}
+.hospital-booking-intro{border-top-color:#c6942e}
+.hospital-booking-intro li>span,.metric-card strong,.record-counters strong{color:#0d2345}
+.hospital-welcome>span,.hospital-welcome h1,.hospital-booking-intro h2,.hospital-service-grid h3{color:#0d2345}
+.hospital-home p,.hospital-home small,.hospital-booking-intro li small,.hospital-service-grid p,.clinic-description p,.doctor-entry p{color:#6b7280}
+.text-link,.button.text-link,.hospital-public-header nav a,.auth-header nav a,.login-other a{color:#0d2345;text-decoration:underline;text-underline-offset:3px}
+.text-link:hover,.button.text-link:hover,.hospital-public-header nav a:hover,.auth-header nav a:hover{color:#0d2345;text-decoration-thickness:2px}
+.hospital-service-grid article>.icon,.clinic-services .icon,.metric-symbol .icon,.quick-grid .icon{color:#2a9d8f}
+.hospital-brand,.hospital-brand:hover,.wordmark,.wordmark:hover{text-decoration:none}
+
+/* Patient identity across the portal, its dialogs, and patient sign-in. */
+.auth-patient,body[data-surface=patient]{--navy:#0d2345;--ink:#0b3441;--blue:#0b8290;--primary:#0b8290;--primary-hover:#086c78;--primary-dark:#0d2345;--primary-light:#e6f4f3;--sky-light:#e6f4f3;--canvas:#f3f9f8;--line:#cce3e5}
+.auth-patient{background:#e1f3f1;color:#0b3441}
+.auth-patient .auth-header,.auth-patient .auth-footer{background:#fff}
+.auth-patient .auth-story{background:#e1f3f1}
+.auth-patient .auth-story h1,.auth-patient .auth-story h1 em,.auth-patient .auth-eyebrow,.auth-patient .section-kicker{color:#0d2345}
+.auth-patient #login-form .input{background:#f0f7f7;border-color:#c9dfe0;color:#0b3441}
+.auth-patient #login-form input:-webkit-autofill{-webkit-box-shadow:0 0 0 1000px #f0f7f7 inset;-webkit-text-fill-color:#0b3441}
+.auth-patient .button.primary,.auth-patient .button.primary:hover,body[data-surface=patient] .button.primary,body[data-surface=patient] .button.primary:hover{background:#0b8290;border-color:#0b8290;color:#fff}
+.auth-patient .button.primary:hover,body[data-surface=patient] .button.primary:hover{background:#086c78;border-color:#086c78}
+.auth-patient .text-link,.auth-patient .login-other a,.auth-patient .auth-header nav a[aria-current],body[data-surface=patient] .text-link,body[data-surface=patient] .button.text-link{color:#0b8290}
+body[data-surface=patient]{background:#f3f9f8;color:#0b3441}
+body[data-surface=patient] .clinical-shell,body[data-surface=patient] .clinical-workspace #main{background:#f3f9f8}
+body[data-surface=patient] .clinical-sidebar{background:#0d2345}
+body[data-surface=patient] .clinical-nav>a.active{background:#0b8290;color:#fff}
+body[data-surface=patient] .metric-symbol,body[data-surface=patient] .mobile-bottom a.active{color:#0b8290}
+body[data-surface=patient] .metric-symbol{background:#e6f4f3}
+body[data-surface=patient] .metric-symbol .icon{color:#0b8290}
+body[data-surface=patient] .next-appointment{background:#e6f4f3}
+body[data-surface=patient] .input,body[data-surface=patient] input:not([type=checkbox]):not([type=radio]),body[data-surface=patient] textarea,body[data-surface=patient] select{background:#f2f8f7;border-color:#c9e2df;color:#0b3441}
+body[data-surface=patient] .input:focus,body[data-surface=patient] input:focus,body[data-surface=patient] textarea:focus,body[data-surface=patient] select:focus{outline:2px solid #0b82904d;outline-offset:1px;border-color:#0b8290}
+
+/* Keep the supplied university seal complete and readable in each header. */
+.brand-logo{width:54px;height:54px;aspect-ratio:1;object-fit:contain;object-position:center;border-radius:50%;background:transparent;clip-path:circle(49.5% at center)}
+.clinical-sidebar .brand-logo{width:54px;height:54px}
+.hospital-public-header .brand-logo{width:52px;height:52px}
+.auth-header .brand-logo{width:52px;height:52px}
+.side-collapsed .clinical-sidebar .brand-logo{width:33px;height:33px}
+@media(min-width:901px) and (max-width:1200px){.clinical-shell:not(.side-collapsed){grid-template-columns:172px minmax(0,1fr)}.clinical-sidebar .brand-logo{width:50px;height:50px}.clinical-sidebar .hospital-brand strong{font-size:19px}}
+@media(max-width:700px){.hospital-public-header .brand-logo,.auth-header .brand-logo{width:40px;height:40px}}
+
+/* Place the login-page identity at the right edge in the RTL header. */
+.auth-header{justify-content:space-between}
+.auth-header .wordmark{margin-inline-end:0}
+
+.auth-header nav{margin-inline-start:auto}
+.register-prompt{margin:16px 0 0;font-size:12px;color:#6b7280}
+.register-prompt a{color:#0b8290;text-decoration:underline;text-underline-offset:3px;font-weight:700}
+.register-layout{display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:0;background:#e1f3f1}
+.register-story{padding:8% 12%;display:flex;flex-direction:column;justify-content:center;gap:14px;color:#0d2345}
+.register-story h1{font-size:30px;line-height:1.45;margin:0}
+.register-story p,.register-story-note{font-size:13px;line-height:1.9;color:#6b7280;max-width:420px}
+.register-story-note{border-top:1px solid #c9dfe0;padding-top:18px;margin-top:12px}
+.register-card{background:#fff;padding:36px clamp(25px,7vw,90px);display:flex;flex-direction:column;justify-content:center}
+.register-card h2{font-size:25px;margin:8px 0}
+.register-card .field{display:block;margin:0 0 14px;font-size:12px}
+.register-card .field>span{display:block;margin-bottom:6px}
+.register-card .input{width:100%;min-height:43px;background:#f0f7f7}
+.register-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.register-card .button{min-height:43px}
+@media(max-width:700px){.register-layout{grid-template-columns:1fr;overflow:auto}.register-story{padding:24px 22px 12px}.register-story h1{font-size:21px}.register-story-note{display:none}.register-card{padding:22px}.register-card h2{font-size:22px}}
+
+/* Three connected entry screens based on the supplied teal references. */
+.auth-page{height:100dvh;overflow:hidden}
+.auth-layout,.register-layout{min-height:0}
+.auth-patient,.auth-doctor,.register-page{--primary:#0b8290;--primary-hover:#086c78;--primary-light:#e6f4f3;--ink:#073542;--muted:#5c7580;--line:#c7e1e2}
+.auth-layout{grid-template-columns:1fr 1fr}
+.auth-patient .auth-story,.auth-doctor .auth-story{order:2;justify-content:center;padding:30px clamp(30px,5vw,76px);overflow:auto}
+.auth-patient .auth-form-area,.auth-doctor .auth-form-area{order:1;background:#fff;border:0;overflow:auto;padding:24px clamp(28px,6vw,82px)}
+.auth-patient .auth-story{background:#e1f3f1;color:#073542}
+.auth-doctor .auth-story{background:#0d3c3e;color:#fff}
+.auth-doctor .auth-story h1,.auth-doctor .auth-story h1 em{color:#fff}
+.auth-doctor .auth-story h1 em,.auth-doctor .auth-eyebrow,.auth-doctor .auth-benefit>.icon{color:#70d2b8}
+.auth-doctor .auth-description,.auth-doctor .auth-benefit p{color:#d5ece9}
+.auth-patient .auth-story h1,.auth-doctor .auth-story h1{font-size:clamp(32px,3vw,42px);line-height:1.4;letter-spacing:0;margin:12px 0 18px}
+.auth-story .auth-description{font-size:14px;line-height:1.9;color:inherit;opacity:.85}
+.auth-story .auth-benefits{gap:17px;margin:25px 0}
+.auth-story .auth-benefit strong{font-size:14px}
+.auth-story .auth-benefit p{font-size:11px;line-height:1.7}
+.auth-patient .auth-benefit>.icon,.auth-patient .auth-eyebrow{color:#0b8290}
+.auth-form-area .login-form-wrap{max-width:430px}
+.auth-page .login-form-wrap h2{font-size:29px;margin:6px 0}
+.auth-page .login-intro{font-size:13px;margin-bottom:22px}
+.auth-page #login-form .field{margin-bottom:15px;font-size:13px}
+.auth-page #login-form .input{min-height:50px;background:#f0f7f7;border:1px solid #c9dfe0;border-radius:10px}
+.auth-page .login-submit{min-height:51px;border-radius:10px;font-size:14px;justify-content:center}
+.auth-patient .button.primary,.auth-patient .button.primary:hover{background:#0b8290;border-color:#0b8290;color:#fff}
+.auth-doctor .button.primary,.auth-doctor .button.primary:hover{background:#70d2b8;border-color:#70d2b8;color:#073542}
+.auth-patient .button.primary:hover{background:#086c78;border-color:#086c78}
+.auth-doctor .button.primary:hover{background:#58bea3;border-color:#58bea3}
+.auth-page .text-link,.auth-page .register-prompt a,.auth-page .login-other a{color:#0b8290}
+.auth-page .demo-explanation{margin-top:12px}
+.auth-page .login-other{margin-top:12px;padding-top:12px}
+.auth-page .auth-header nav a[aria-current]{color:#0b8290;border-color:#0b8290}
+.register-page .register-layout{grid-template-columns:1fr 1fr;background:#e1f3f1}
+.register-page .register-story{order:2;justify-content:center;padding:30px clamp(30px,5vw,76px);overflow:auto}
+.register-page .register-story h1{font-size:clamp(32px,3vw,42px);line-height:1.4}
+.register-page .register-story p{font-size:14px;max-width:480px}
+.register-page .register-story-benefits{display:flex;flex-direction:column;gap:17px;margin-top:22px}
+.register-page .register-story-benefits .icon{color:#0b8290}
+.register-page .register-story-benefits strong{font-size:14px}
+.register-page .register-story-benefits p{font-size:11px;margin:3px 0}
+.register-page .register-card{order:1;overflow:auto;justify-content:center;padding:22px clamp(28px,6vw,82px)}
+.register-page .register-card h2{font-size:25px;margin:4px 0}
+.register-page .register-card .login-intro{margin:0 0 16px}
+.register-page .register-card .field{margin:0 0 9px}
+.register-page .register-card .field>span{margin-bottom:4px;font-size:12px}
+.register-page .register-card .field small{font-size:10px;color:#6b7280}
+.register-page .register-card .input{min-height:42px;background:#f0f7f7;border:1px solid #c9dfe0;border-radius:10px}
+.register-page .register-card .button.primary{min-height:45px;border-radius:10px}
+.register-consent{display:flex;align-items:center;gap:8px;font-size:11px;color:#5c7580;margin:10px 0}
+.register-consent input{accent-color:#0b8290;width:16px;height:16px;flex:none}
+.register-page .register-card .register-prompt{margin:9px 0 0}
+.register-page .register-card .demo-explanation{margin:6px 0 0}
+@media(max-width:700px){.auth-page{height:auto;min-height:100dvh;overflow:visible}.auth-layout,.register-page .register-layout{display:flex;flex-direction:column;overflow:visible}.auth-patient .auth-form-area,.auth-doctor .auth-form-area,.register-page .register-card{order:1;overflow:visible;padding:26px 22px}.auth-patient .auth-story,.auth-doctor .auth-story,.register-page .register-story{order:2;overflow:visible;padding:25px 22px}.auth-story .auth-benefits,.register-story-benefits{display:none!important}.register-page .register-story h1{font-size:25px}.register-page .register-story p{font-size:12px}}
+.auth-page .auth-story,.auth-page .auth-form-area,.register-page .register-story,.register-page .register-card{scrollbar-width:none}
+.auth-page .auth-story::-webkit-scrollbar,.auth-page .auth-form-area::-webkit-scrollbar,.register-page .register-story::-webkit-scrollbar,.register-page .register-card::-webkit-scrollbar{display:none}
+.auth-patient .auth-form-area,.auth-doctor .auth-form-area{align-items:safe center}
+.auth-page .login-form-wrap h2{margin:3px 0}
+.auth-page .login-intro{margin-bottom:14px}
+.auth-page #login-form .field{margin-bottom:11px}
+.auth-page .demo-explanation{margin-top:8px}
+.register-page .register-card{justify-content:flex-start;padding-block:10px}
+.register-page .register-card h2{font-size:23px;margin:0}
+.register-page .register-card .login-intro{margin:0 0 8px}
+.register-page .register-card .field{margin-bottom:6px}
+.register-page .register-card .input{min-height:39px}
+.register-page .register-consent{margin:6px 0}
+.register-page .register-card .button.primary{min-height:42px}
+.auth-page #login-form .input,.register-page .register-card .input{text-align:right}
+.auth-patient #login-form .input:focus,.register-page .register-card .input:focus{outline:2px solid #0b82904d;outline-offset:1px;border-color:#0b8290}
+.auth-page #login-form input:-webkit-autofill{-webkit-box-shadow:0 0 0 1000px #f0f7f7 inset;-webkit-text-fill-color:#073542}
+.auth-page .login-form-meta{gap:12px}
+.auth-page .remember-me{display:inline-flex;align-items:center;gap:7px;cursor:pointer;white-space:nowrap;color:#5c7580;font-size:12px}
+.auth-page .remember-me input{width:16px;height:16px;accent-color:#0b8290;cursor:pointer}
+
+/* Patient portal: calm horizontal navigation, appointment-first layout. */
+body[data-surface=patient]{background:#f3f9f8;color:#0b3441}
+.patient-shell{height:100dvh;display:flex;flex-direction:column;direction:rtl;overflow:hidden;background:#f3f9f8}
+.patient-header.clinical-topbar{height:66px;flex:none;padding:0 clamp(14px,3vw,36px);gap:28px;background:#fff;border-bottom:1px solid #d4e8e8;box-shadow:none}
+.patient-brand{display:flex;align-items:center;gap:9px;color:#0b3441;white-space:nowrap;flex:none;text-decoration:none}
+.patient-brand:hover{color:#0b3441}.patient-brand .brand-logo{width:44px;height:44px}
+.patient-brand strong{display:block;font:800 16px var(--font-en)}.patient-brand small{display:block;color:#8297a0;font-size:9px;margin-top:2px}
+.patient-nav{display:flex;align-items:center;gap:4px;min-width:0}.patient-nav a{display:flex;align-items:center;gap:7px;padding:10px 12px;color:#647b86;font-size:11px;border-radius:8px;white-space:nowrap;text-decoration:none}
+.patient-nav a:hover,.patient-nav a.active{background:#e6f5f4;color:#087e89}.patient-nav .icon{width:15px;height:15px}
+.patient-header-profile{display:flex;align-items:center;gap:8px;margin-inline-start:auto;min-width:0;color:#0b3441}
+.patient-header-profile>span:last-child{display:block;min-width:0}.patient-header-profile strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:125px}.patient-header-profile small{display:block;font-size:9px;color:#708995;text-align:right}
+.patient-info-mark{width:29px;height:29px;border-radius:50%;background:#0b8290;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}.patient-info-mark .icon{width:17px;height:17px}
+.patient-logout{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;color:#738894;flex:none}.patient-logout:hover{background:#e6f5f4;color:#087e89}.patient-logout .icon{width:16px;height:16px}
+.patient-shell #main{flex:1;min-height:0;overflow:auto;width:100%;max-width:none;padding:20px clamp(16px,3vw,38px);margin:0}
+.patient-footer{flex:none;text-align:center;padding:8px 12px;background:#fff;border-top:1px solid #d4e8e8;color:#758b95;font-size:9px}
+.patient-home{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:13px;min-height:100%}
+.patient-home-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:15px;min-height:66px}
+.patient-home-heading span{display:block;color:#71909a;font-size:10px}.patient-home-heading h1{font-size:23px;line-height:1.4;margin:2px 0 0;color:#073744}.patient-home-heading small{display:inline-block;margin-top:4px;background:#e4f4f3;color:#0b8290;border-radius:20px;padding:3px 9px;font:10px var(--font-en)}
+body[data-surface=patient] .patient-shell .button.primary{background:#0b8290;border-color:#0b8290;color:#fff}body[data-surface=patient] .patient-shell .button.primary:hover{background:#086c78;border-color:#086c78}
+.patient-add-booking{font-size:12px;font-weight:700;min-height:39px;border-radius:8px;white-space:nowrap}
+.patient-next-card,.patient-home-card{background:#fff;border:1px solid #cce3e5;border-radius:12px}
+.patient-next-card{padding:18px 20px;border-inline-start:4px solid #0b8290;display:flex;flex-direction:column;gap:12px;min-height:160px}
+.patient-next-details{display:flex;align-items:center;gap:15px}.patient-date-box{width:57px;height:60px;border-radius:10px;background:#e2f3f2;color:#073744;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none}.patient-date-box strong{font:800 23px var(--font-en)}.patient-date-box small{font-size:10px}.patient-date-box .icon{width:23px;height:23px;color:#0b8290}
+.patient-eyebrow{font-size:10px;color:#0b8290;font-weight:700}.patient-next-details h2{font-size:19px;margin:3px 0;color:#073744}.patient-next-details p{font-size:11px;color:#6c8290;margin:0}
+.patient-visit-note{display:flex;align-items:center;gap:6px;margin:0;padding:8px 10px;background:#f1f7f7;border-radius:7px;color:#6c8290;font-size:10px}.patient-visit-note .icon{width:14px;height:14px;flex:none}
+.patient-next-actions{display:flex;gap:8px;flex-wrap:wrap}.patient-next-actions .button{min-height:32px;font-size:10px;border-radius:7px}.patient-next-actions .button.secondary{border-color:#cce3e5;color:#0b3441}
+.patient-home-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,.9fr);gap:13px;flex:1;min-height:280px}
+.patient-home-card{padding:15px 17px;min-width:0}.patient-card-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.patient-card-heading h2{font-size:14px;margin:0;color:#073744}.patient-card-heading a,.patient-card-heading .text-link,.patient-card-more{color:#0b8290;font-size:10px;text-decoration:underline;text-underline-offset:2px}.patient-card-heading .text-link{display:inline-flex;align-items:center;gap:3px;padding:4px;font-weight:700}.patient-card-heading .text-link .icon{width:13px;height:13px}
+.patient-appointments-card{display:flex;flex-direction:column}.patient-appointment-list{flex:1;min-height:0}.patient-appointment-row{display:flex;align-items:center;gap:11px;border-bottom:1px solid #dbeaea;padding:10px 0;min-width:0}.patient-appointment-row:last-child{border-bottom:0}.patient-row-date{width:37px;flex:none;text-align:center}.patient-row-date strong{display:block;font:800 16px var(--font-en);color:#073744}.patient-row-date small{font-size:9px;color:#81969e}.patient-appointment-row>div{min-width:0;flex:1}.patient-appointment-row>div strong{display:block;font-size:11px;color:#073744}.patient-appointment-row>div small{display:block;color:#718793;font-size:9px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.patient-appointment-row .badge{flex:none;font-size:9px}.patient-card-more{display:inline-flex;gap:5px;align-items:center;margin-top:auto;padding-top:8px}.patient-card-more .icon{width:13px;height:13px}
+.patient-side-cards{display:flex;flex-direction:column;gap:13px;min-width:0}.patient-side-cards .patient-home-card{flex:1}.patient-instruction{display:flex;gap:8px;padding:9px 0;border-bottom:1px solid #dbeaea}.patient-instruction:last-child{border:0}.patient-instruction>span{color:#0b8290}.patient-instruction .icon{width:15px;height:15px}.patient-instruction p{font-size:10px;line-height:1.7;margin:0;color:#496671;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}.patient-empty{font-size:11px;line-height:1.8;color:#718793;margin:12px 0}
+@media(max-width:800px){.patient-header.clinical-topbar{gap:12px}.patient-nav a{padding:8px;font-size:10px}.patient-nav a .icon{display:none}.patient-header-profile strong{max-width:85px}.patient-home-grid{grid-template-columns:1.2fr .85fr}}
+@media(max-width:700px){.patient-header.clinical-topbar{height:59px;padding:0 12px}.patient-brand .brand-logo{width:37px;height:37px}.patient-brand strong{font-size:13px}.patient-nav{display:none}.patient-header-profile{margin-inline-start:auto}.patient-header-profile strong{max-width:100px}.patient-shell #main{padding:14px 12px}.patient-home-heading{min-height:60px}.patient-home-heading h1{font-size:19px}.patient-add-booking{font-size:10px;padding:7px 8px;min-height:34px}.patient-home-grid{grid-template-columns:1fr;min-height:0}.patient-side-cards{display:grid;grid-template-columns:1fr 1fr}.patient-shell .mobile-bottom{display:flex;flex:none;justify-content:space-around;background:#fff;border-top:1px solid #d4e8e8;padding:7px 4px max(7px,env(safe-area-inset-bottom))}.patient-shell .mobile-bottom a{display:flex;flex:1;flex-direction:column;align-items:center;gap:3px;color:#718793;font-size:9px}.patient-shell .mobile-bottom a.active{color:#0b8290;font-weight:700}.patient-shell .mobile-bottom .icon{width:17px;height:17px}.patient-footer{display:none}}
+@media(max-width:480px){.patient-side-cards{grid-template-columns:1fr}.patient-next-card{padding:14px}.patient-next-details h2{font-size:16px}.patient-visit-note{align-items:flex-start}.patient-header-profile strong{max-width:62px}.patient-info-mark{display:none}}
+@media(max-width:700px){.patient-side-cards{grid-template-columns:1fr}}
+
+/* Let the patient page fill wide screens without a detached scrollbar or tall empty cards. */
+body[data-surface=patient] .patient-shell #main{width:100%;max-width:none;margin:0;padding:16px clamp(16px,3vw,42px);overflow-y:auto;overflow-x:hidden}
+.patient-shell .patient-home{width:100%;max-width:none;margin:0;min-height:0;gap:10px}
+.patient-shell .patient-home-grid{flex:none;min-height:0;align-items:stretch}
+.patient-shell .patient-side-cards .patient-home-card{flex:none;min-height:0}
+.patient-shell .patient-home-heading{min-height:58px}
+.patient-shell .patient-next-card{padding:14px 18px;gap:8px}
+.patient-shell .patient-appointment-row{padding:7px 0}
+@media(max-width:700px){body[data-surface=patient] .patient-shell #main{padding:14px 12px}}
+
+/* Local attachment library for patients, treating doctors, and radiology doctors. */
+.attachment-page{width:100%;max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:16px;color:#0b3441}
+.attachment-head{display:flex;justify-content:space-between;align-items:center;gap:14px}.attachment-head h1{font-size:22px;margin:5px 0}.attachment-head p{font-size:12px;color:#6b7280;margin:0;line-height:1.8}.attachment-head .button{white-space:nowrap}
+.attachment-patient-select{display:flex;align-items:center;gap:12px;font-size:12px;font-weight:700}.attachment-patient-select select{width:min(420px,100%);min-height:38px}
+.attachment-panel{background:#fff;border:1px solid #cce3e5;border-radius:11px;overflow:hidden}.attachment-panel-title{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 17px;background:#f7fbfb;border-bottom:1px solid #dcebec}.attachment-panel-title h2{font-size:15px;margin:0}.attachment-panel-title span{font-size:11px;color:#6c8290}
+.attachment-row{display:flex;align-items:center;gap:12px;padding:14px 17px;border-bottom:1px solid #e4eeee}.attachment-row:last-child{border:0}.attachment-row>div{flex:1;min-width:0}.attachment-row strong{display:block;font-size:13px}.attachment-row small{display:block;font-size:10px;color:#728793;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attachment-file-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:#e7f5f4;color:#0b8290;border-radius:8px;flex:none}.attachment-file-icon .icon{width:19px;height:19px}.attachment-legacy{font-size:10px;color:#8a9aa3}.attachment-empty{padding:38px 18px;text-align:center;color:#718793;font-size:12px}.attachment-disclaimer{font-size:10px;color:#81939b;margin:0}
+.attachment-form{display:flex;flex-direction:column;gap:10px}.attachment-form>p{margin:0;font-size:12px}.attachment-form .field{margin:0}.attachment-form .field>span{display:block;font-size:11px;margin-bottom:5px}.attachment-form .input{width:100%}.attachment-form>small{font-size:10px;color:#718793}.attachment-form-actions{display:flex;gap:8px;justify-content:flex-start}.attachment-preview{display:flex;flex-direction:column;align-items:flex-start;gap:12px}.attachment-preview p{font-size:11px;color:#718793;margin:0}.attachment-preview-image{max-width:100%;max-height:56vh;object-fit:contain;border:1px solid #dcebec;border-radius:7px}.attachment-preview-pdf{width:min(700px,75vw);height:55vh;border:1px solid #dcebec;border-radius:7px}
+.consultation-row{display:flex;align-items:center;gap:15px;padding:14px 17px;border-bottom:1px solid #e4eeee}.consultation-row:last-child{border:0}.consultation-row>div{flex:1}.consultation-row strong{display:block;font-size:13px}.consultation-row small{display:block;font-size:10px;color:#728793;margin-top:4px}.consultation-row .badge{white-space:nowrap}
+body[data-surface=patient] .attachment-page .button.primary{background:#0b8290;border-color:#0b8290;color:#fff}
+@media(max-width:700px){.attachment-head{align-items:flex-start;flex-direction:column}.attachment-row{flex-wrap:wrap}.attachment-row .button{margin-inline-start:auto}.attachment-patient-select{align-items:flex-start;flex-direction:column}.consultation-row{flex-wrap:wrap}.consultation-row .button{margin-inline-start:auto}.attachment-preview-pdf{width:100%}}
+
+/* Patient home on phones follows the compact reference: visit, guidance, then bookings. */
+@media(max-width:700px){
+  .patient-shell .patient-home{gap:12px}
+  .patient-shell #main{scrollbar-width:none}
+  .patient-shell #main::-webkit-scrollbar{display:none}
+  .patient-shell .patient-home-heading{align-items:center;gap:8px}
+  .patient-shell .patient-add-booking{min-height:38px;padding:8px 10px;font-size:10px}
+  .patient-shell .patient-next-card{background:#0d818b;border:0;border-radius:16px;padding:17px 18px;gap:11px;color:#fff}
+  .patient-shell .patient-next-details{gap:12px}
+  .patient-shell .patient-date-box{background:#ffffff30;color:#fff}
+  .patient-shell .patient-eyebrow,.patient-shell .patient-next-details h2,.patient-shell .patient-next-details p{color:#fff}
+  .patient-shell .patient-next-details h2{font-size:18px}
+  .patient-shell .patient-visit-note{background:#ffffff20;color:#fff;line-height:1.7}
+  body[data-surface=patient] .patient-shell .patient-next-actions .button.primary{background:#fff;border-color:#fff;color:#0b3441}
+  .patient-shell .patient-next-actions .button.secondary{border-color:#ffffff8c;color:#fff;background:transparent}
+  .patient-shell .patient-home-grid{display:flex;flex-direction:column;gap:12px}
+  .patient-shell .patient-side-cards{order:0;display:block}
+  .patient-shell .patient-appointments-card{order:1}
+  .patient-shell .patient-home-card{padding:16px;border-radius:16px}
+  .patient-shell .patient-instruction p{font-size:11px}
+  .patient-shell .patient-appointment-row{padding:11px 0}
+  .patient-shell .mobile-bottom{order:3}
+  .patient-shell .mobile-bottom a{font-size:10px}
+  .patient-shell .patient-footer{display:block;order:4;border-top:0;padding:3px 8px max(5px,env(safe-area-inset-bottom));font-size:8px}
+}
+
+/* Keep the two patient dashboard panels level and easier to read on wide screens. */
+@media(min-width:701px){
+  .patient-shell .patient-home-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .patient-shell .patient-side-cards{align-self:stretch}
+  .patient-shell .patient-side-cards .patient-home-card{flex:1}
+}
+@media(min-width:801px){
+  .patient-shell .patient-home-heading h1{font-size:28px}
+  .patient-shell .patient-add-booking{font-size:14px}
+  .patient-shell .patient-eyebrow{font-size:12px}
+  .patient-shell .patient-next-details h2{font-size:22px}
+  .patient-shell .patient-next-details p{font-size:13px}
+  .patient-shell .patient-visit-note,.patient-shell .patient-next-actions .button{font-size:12px}
+  .patient-shell .patient-card-heading h2{font-size:18px}
+  .patient-shell .patient-card-heading a,.patient-shell .patient-card-heading .text-link,.patient-shell .patient-card-more{font-size:14px}
+  .patient-shell .patient-instruction p{font-size:14px}
+  .patient-shell .patient-empty{font-size:14px}
+  .patient-shell .patient-row-date strong{font-size:21px}
+  .patient-shell .patient-row-date small{font-size:11px}
+  .patient-shell .patient-appointment-row>div strong{font-size:15px}
+  .patient-shell .patient-appointment-row>div small{font-size:12px}
+  .patient-shell .patient-appointment-row .badge{font-size:11px}
+  .patient-shell .patient-nav a{font-size:13px}
+  .patient-shell .patient-header-profile strong{font-size:13px}
+}
+@media(max-width:700px){
+  .patient-shell .patient-home-heading h1{font-size:21px}
+  .patient-shell .patient-add-booking{font-size:11px}
+  .patient-shell .patient-eyebrow{font-size:11px}
+  .patient-shell .patient-next-details h2{font-size:19px}
+  .patient-shell .patient-next-details p,.patient-shell .patient-visit-note{font-size:11px}
+  .patient-shell .patient-next-actions .button{font-size:11px}
+  .patient-shell .patient-card-heading h2{font-size:16px}
+  .patient-shell .patient-card-heading a,.patient-shell .patient-card-heading .text-link,.patient-shell .patient-card-more{font-size:12px}
+  .patient-shell .patient-instruction p,.patient-shell .patient-empty{font-size:12px}
+  .patient-shell .patient-appointment-row>div strong{font-size:12px}
+  .patient-shell .patient-appointment-row>div small{font-size:10px}
+  .patient-shell .patient-appointment-row .badge{font-size:10px}
+  .patient-shell .mobile-bottom a{font-size:11px}
+}
+
+/* Patient appointments and file archive share the portal's neutral and teal palette. */
+.patient-shell .patient-bookings .card-header .badge.teal{background:#e5f5f3;color:#087b85}
+.patient-booking-list{display:flex;flex-direction:column;gap:12px}
+.patient-booking-row{display:flex;align-items:center;gap:16px;padding:15px 18px;background:#fff;border:1px solid #cce3e5;border-radius:12px;min-width:0}
+.patient-booking-row.is-cancelled{background:#fafcfc;opacity:.76}
+.patient-booking-date{width:65px;min-height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;border-radius:10px;background:#e4f4f2;color:#0b3441}
+.patient-booking-date strong{font:800 25px/1.2 var(--font-en)}.patient-booking-date span{font-size:11px}
+.patient-booking-copy{flex:1;min-width:0}.patient-booking-copy strong{display:block;font-size:16px;color:#0b3441}.patient-booking-copy p{margin:4px 0 1px;color:#516d79;font-size:13px}.patient-booking-copy small{color:#708995;font-size:12px}
+.patient-booking-actions{display:flex;align-items:center;gap:12px;flex:none}.patient-booking-actions .badge{font-size:11px}.patient-booking-actions .button{min-height:34px;font-size:11px}
+.patient-archive-page{max-width:none}.patient-archive-summary{display:flex;align-items:center;gap:13px;background:#e7f5f3;border:1px solid #c8e7e3;border-radius:12px;padding:15px 18px}.patient-archive-summary-icon{width:39px;height:39px;display:flex;align-items:center;justify-content:center;color:#087e89;background:#fff;border-radius:10px;flex:none}.patient-archive-summary-icon .icon{width:21px;height:21px}.patient-archive-summary>div{flex:1;min-width:0}.patient-archive-summary strong{font-size:15px}.patient-archive-summary p{margin:2px 0 0;color:#55727d;font-size:11px}.patient-archive-summary b{font-size:12px;color:#087b85;white-space:nowrap}
+.patient-archive-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.patient-archive-filters{display:flex;gap:7px;flex-wrap:wrap}.patient-archive-filters button{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 11px;border:1px solid #cde2e4;background:#fff;border-radius:8px;color:#45626e;font-size:11px}.patient-archive-filters button[aria-pressed=true]{background:#0b8290;border-color:#0b8290;color:#fff}.patient-archive-filters span{font:600 10px var(--font-en);opacity:.8}.patient-archive-search{display:flex;align-items:center;gap:7px;border:1px solid #cde2e4;background:#fff;border-radius:8px;padding:0 10px;min-height:36px;min-width:220px;color:#6c8992}.patient-archive-search .icon{width:15px;height:15px}.patient-archive-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#0b3441;font-size:11px}
+.patient-archive-results{min-height:130px}.patient-archive-group{margin-bottom:17px}.patient-archive-group h3{display:flex;align-items:center;gap:9px;margin:0 0 9px;color:#0b3441;font-size:14px}.patient-archive-group h3 span{color:#78909a;font-size:10px;font-weight:400}.patient-archive-list{background:#fff;border:1px solid #cce3e5;border-radius:12px;overflow:hidden}.patient-archive-item{display:flex;align-items:center;gap:13px;padding:14px 17px;border-bottom:1px solid #e5eeee}.patient-archive-item:last-child{border:0}.patient-archive-icon{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:9px;background:#e7f5f4;color:#0b8290;flex:none}.patient-archive-icon .icon{width:20px;height:20px}.patient-archive-info{flex:1;min-width:0}.patient-archive-info strong{display:block;color:#0b3441;font-size:13px}.patient-archive-info p{margin:2px 0;color:#6c8290;font-size:10px}.patient-archive-info small{display:block;color:#8a9aa3;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.patient-archive-item time{color:#55727d;font-size:11px;white-space:nowrap}.patient-archive-item .button{flex:none;font-size:11px}
+@media(max-width:700px){.patient-booking-row{flex-wrap:wrap;padding:13px;gap:10px}.patient-booking-date{width:54px;min-height:58px}.patient-booking-date strong{font-size:21px}.patient-booking-copy strong{font-size:14px}.patient-booking-copy p{font-size:11px}.patient-booking-actions{width:100%;justify-content:space-between;border-top:1px solid #e5eeee;padding-top:10px}.patient-archive-toolbar{align-items:stretch}.patient-archive-search{width:100%}.patient-archive-item{flex-wrap:wrap}.patient-archive-info{flex-basis:calc(100% - 56px)}.patient-archive-item time{margin-inline-start:51px}.patient-archive-item .button{margin-inline-start:auto}.patient-archive-summary{align-items:flex-start}.patient-archive-summary p{line-height:1.6}}
+
+/* Patient-facing unified health archive; clinical details come only from stored records. */
+.health-archive-page{width:100%;display:flex;flex-direction:column;gap:16px;color:#0b3441}
+.health-archive-title{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.health-archive-title>div:first-child>span{display:block;color:#0b8290;font-size:11px;font-weight:700}
+.health-archive-title h1{font-size:25px;line-height:1.4;margin:4px 0;color:#0b3441}
+.health-archive-title p{font-size:12px;color:#6b7280;margin:0}
+.health-archive-actions{display:flex;gap:8px;flex-wrap:wrap}
+.health-archive-actions .button{font-size:12px;min-height:38px}
+.health-archive-identity{display:flex;align-items:center;gap:15px;background:#fff;border:1px solid #cce3e5;border-radius:12px;padding:16px 20px;min-width:0}
+.health-archive-identity .person-avatar.large{width:54px;height:54px;font-size:19px;flex:none}
+.health-archive-person{flex:1;min-width:0}.health-archive-person h2{font-size:19px;margin:0 0 4px}.health-archive-person p{font-size:11px;color:#607985;margin:2px 0}
+.health-archive-allergy{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;background:#fff6e8;color:#91631e;font-size:11px;max-width:260px}
+.health-archive-allergy .icon{width:16px;height:16px;flex:none}
+.health-archive-tabs{display:flex;align-items:center;gap:8px;border-bottom:1px solid #cfe1e3;overflow-x:auto;scrollbar-width:none}
+.health-archive-tabs::-webkit-scrollbar{display:none}
+.health-archive-tabs button{flex:none;padding:11px 16px;border-bottom:2px solid transparent;color:#627b86;font-size:12px;font-weight:700;white-space:nowrap}
+.health-archive-tabs button[aria-selected=true]{border-color:#0b8290;color:#0b3441}
+.health-archive-tabs button:hover{color:#0b8290}
+.health-archive-content{min-height:245px}
+.health-archive-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,.82fr);gap:16px;align-items:start}
+.health-archive-main-column,.health-archive-side-column,.health-archive-stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.health-archive-panel{background:#fff;border:1px solid #cce3e5;border-radius:11px;overflow:hidden}
+.health-archive-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid #e3eeee}
+.health-archive-panel-head h2{font-size:14px;margin:0}.health-archive-panel-head>a,.health-archive-panel-head>span{font-size:10px;color:#0b8290}
+.health-archive-panel-head>a{text-decoration:underline;text-underline-offset:3px}
+.health-archive-panel-body{padding:15px 16px}
+.health-archive-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.health-archive-facts>div{display:flex;flex-direction:column;gap:5px;padding:14px;border:1px solid #e1eaeb;background:#f6faf9;border-radius:9px;min-width:0}
+.health-archive-facts span{font-size:10px;color:#6b818a}.health-archive-facts strong{font-size:17px;color:#0b3441}.health-archive-facts small{font-size:10px;color:#69808a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.health-archive-timeline{display:flex;flex-direction:column;gap:0}
+.health-archive-event{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:start;gap:10px;padding:11px 0;border-bottom:1px solid #e8f0f0}
+.health-archive-event:last-child{border-bottom:0}.health-archive-event>span{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#e5f5f3;color:#0b8290}
+.health-archive-event>span .icon{width:16px;height:16px}.health-archive-event strong{font-size:12px}.health-archive-event p{font-size:11px;color:#68818b;margin:2px 0}.health-archive-event time{font-size:10px;color:#78919a;white-space:nowrap}
+.health-archive-vital,.health-archive-appointment{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #e8f0f0}
+.health-archive-vital:last-of-type,.health-archive-appointment:last-child{border-bottom:0}
+.health-archive-vital span{font-size:11px;color:#617b86}.health-archive-vital strong{font-size:12px;color:#0b3441}
+.health-archive-footnote{font-size:9px;color:#81939b;margin:10px 0 0}
+.health-archive-appointment strong{font-size:11px}.health-archive-appointment small{display:block;margin-top:3px;font-size:10px;color:#6e8590}
+.health-archive-appointment>bdi{padding:4px 7px;border-radius:6px;background:#e7f5f3;color:#087b85;font:700 11px var(--font-en)}
+.health-archive-empty{margin:0;color:#6e8590;font-size:12px;line-height:1.8}
+.health-archive-detail{padding:12px 0;border-bottom:1px solid #e8f0f0}.health-archive-detail:last-child{border-bottom:0}
+.health-archive-detail>div{display:flex;align-items:center;justify-content:space-between;gap:10px}.health-archive-detail strong{font-size:13px}.health-archive-detail time{font-size:10px;color:#78919a}
+.health-archive-detail p{font-size:11px;color:#607b85;margin:5px 0 0;line-height:1.8}.health-archive-detail .button{margin-top:10px}
+.health-archive-files-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 17px;background:#e7f5f3;border:1px solid #c8e7e3;border-radius:10px}
+.health-archive-files-intro h2{font-size:15px;margin:0 0 3px}.health-archive-files-intro p{font-size:11px;color:#607985;margin:0}.health-archive-files-intro strong{font-size:11px;color:#087b85;white-space:nowrap}
+.health-archive-content>.patient-archive-toolbar{margin:14px 0}
+@media(max-width:900px){.health-archive-grid{grid-template-columns:1fr}.health-archive-side-column{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){
+  .health-archive-page{gap:13px}
+  .health-archive-title{align-items:flex-start;flex-direction:column}.health-archive-title h1{font-size:22px}.health-archive-actions{width:100%}.health-archive-actions .button{flex:1;justify-content:center}
+  .health-archive-identity{padding:13px;gap:10px;flex-wrap:wrap}.health-archive-identity .person-avatar.large{width:44px;height:44px;font-size:16px}
+  .health-archive-person h2{font-size:16px}.health-archive-person p{font-size:10px}.health-archive-allergy{max-width:none;width:100%}
+  .health-archive-tabs{gap:2px}.health-archive-tabs button{font-size:11px;padding:10px 12px}
+  .health-archive-side-column{display:flex}.health-archive-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.health-archive-facts>div:first-child{grid-column:1/-1}
+  .health-archive-event{grid-template-columns:30px minmax(0,1fr)}.health-archive-event time{grid-column:2;white-space:normal}
+  .health-archive-files-intro{align-items:flex-start}.health-archive-files-intro strong{font-size:10px}
+  .health-archive-detail>div{align-items:flex-start;flex-direction:column;gap:2px}
+}
+
+.archive-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(198, 148, 46, 0.12);
+  color: #c6942e !important;
+  border: 1px solid rgba(198, 148, 46, 0.4);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.archive-nav-pill:hover {
+  background: #c6942e;
+  color: #0d2345 !important;
+  border-color: #c6942e;
+}
+
+

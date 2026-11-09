@@ -1,0 +1,15 @@
+{
+  "name": "mnu333-archive-platform",
+  "version": "1.0.0",
+  "description": "MNU 333 — Interactive Health Archive Platform with Radiology Viewer & Lab Gallery",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "health-archive",
+    "radiology-viewer",
+    "mnu333"
+  ],
+  "license": "MIT"
+}

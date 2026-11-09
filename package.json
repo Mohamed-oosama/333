@@ -1,0 +1,16 @@
+{
+  "name": "mnu333-platforms",
+  "version": "1.0.0",
+  "description": "MNU 333 — Dual Medical Platforms (Clinical Platform + Health Archive Platform)",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "hospital",
+    "clinical",
+    "health-archive",
+    "mnu333"
+  ],
+  "license": "MIT"
+}
