@@ -55,55 +55,80 @@ function patientAttachmentsPage() {
 function attachmentsPage() {
   const p = patient();
   const radiology = role === 'radiologist';
+  if (!p && role === 'doctor') return doctorNoPatients();
   return `<section class="attachment-page clinician-attachments"><div class="attachment-head"><div><span class="section-kicker">${radiology?'مساحة الأشعة':'ملف المريض'}</span><h1>${radiology?'الأشعة والمرفقات':'الفحوصات والمستندات'}</h1><p>أضف ملف الفحص وراجعه داخل ملف المريض في هذه المعاينة المحلية.</p></div>${button(icon('upload')+(radiology?' إضافة أشعة':' إضافة مرفق'),'attachment-upload','primary')}</div>
-    <label class="attachment-patient-select">المريض <select id="attachment-patient" class="input">${db.patients.map(x=>`<option value="${esc(x.id)}" ${x.id===p.id?'selected':''}>${esc(x.name)} · ${esc(x.id)}</option>`).join('')}</select></label>
+    <label class="attachment-patient-select">المريض <select id="attachment-patient" class="input">${(role === 'doctor' ? doctorPatients() : db.patients).map(x=>`<option value="${esc(x.id)}" ${x.id===p.id?'selected':''}>${esc(x.name)} · ${esc(x.id)}</option>`).join('')}</select></label>
     <div class="attachment-panel"><div class="attachment-panel-title"><h2>مرفقات ${esc(p.name)}</h2><span>${db.attachments.filter(a=>a.patient===p.id).length} مرفقات</span></div>${attachmentRows(p.id)}</div>
     <p class="attachment-disclaimer">الملفات محفوظة في هذا المتصفح للتجربة فقط، ولا تُرسل إلى خادم المستشفى.</p></section>`;
 }
 
 function consultationsPage() {
-  const list = db.appointments.filter(a => a.status !== 'ملغي' && a.doctor === 'د. سارة أحمد').slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const list = db.appointments.filter(a => ['مؤكد','تم تسجيل الوصول'].includes(a.status) && a.doctor === demoDoctor && doctorCanAccess(a.patient)).slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
   return `<section class="attachment-page"><div class="attachment-head"><div><span class="section-kicker">مساحة الطبيب</span><h1>الكشف والزيارات</h1><p>مواعيد الكشف المسجلة وملفات المرضى الجاهزة للفحص السريري.</p></div></div>
-    <div class="attachment-panel"><div class="attachment-panel-title"><h2>قائمة الكشف</h2><span>${list.length} مواعيد</span></div>${list.length ? list.map(a=>{const p=db.patients.find(x=>x.id===a.patient);return `<article class="consultation-row"><div><strong>${esc(p?.name||a.patient)}</strong><small>${esc(a.date)} · <bdi>${esc(a.time)}</bdi> · ${esc(a.type)}</small></div>${badge(a.status,'amber')}<a class="button primary small" href="#encounter/${esc(a.patient)}">فتح الكشف</a></article>`}).join('') : '<div class="attachment-empty">لا توجد مواعيد كشف مسجلة للطبيبة.</div>'}</div></section>`;
+    <div class="attachment-panel"><div class="attachment-panel-title"><h2>قائمة الكشف</h2><span>${list.length} مواعيد</span></div>${list.length ? list.map(a=>{return doctorAppointmentRow(a)}).join('') : '<div class="attachment-empty">لا توجد مواعيد كشف مسجلة للطبيبة.</div>'}</div></section>`;
 }
 
-function openAttachmentForm() {
+function isAttachmentImage(filename) {
+  return /\.(png|jpe?g|webp)$/i.test(filename || '');
+}
+
+function openAttachmentForm(initialKind) {
   if (!['patient','doctor','radiologist'].includes(role)) return;
   const patientId = role === 'patient' ? demoSession.patientId : selected;
-  modal(role === 'radiologist' ? 'إضافة ملف أشعة' : 'إضافة مرفق', `<form id="attachment-form" class="attachment-form">
+  const uploader = role;
+  if (uploader === 'doctor' && !doctorCanAccess(patientId)) return;
+  const labImage = uploader === 'patient' && initialKind === 'تحليل';
+  const visits = db.visits.filter(v => v.patient === patientId && v.approved && v.id);
+  modal(role === 'radiologist' ? 'إضافة ملف أشعة' : labImage ? 'إضافة صورة نتيجة المختبر' : 'إضافة مرفق', `<form id="attachment-form" class="attachment-form">
     <p>الملف مرتبط بالمريض: <strong>${esc(db.patients.find(p=>p.id===patientId)?.name || patientId)}</strong></p>
     <label class="field"><span>عنوان المرفق</span><input class="input" name="title" maxlength="80" required placeholder="مثال: أشعة صدر أو تقرير فحص"></label>
-    <label class="field"><span>نوع المرفق</span><select class="input" name="kind" ${role==='radiologist'?'disabled':''}><option ${role==='radiologist'?'selected':''}>أشعة</option><option>تحليل</option><option>تقرير</option><option>مستند آخر</option></select></label>
+    <label class="field"><span>نوع المرفق</span><select class="input" name="kind" ${role==='radiologist'||labImage?'disabled':''}><option ${role==='radiologist'?'selected':''}>أشعة</option><option ${labImage?'selected':''}>تحليل</option><option>تقرير</option><option>مستند آخر</option></select></label>
     <label class="field"><span>تاريخ الفحص</span><input class="input" name="date" type="date" required value="${new Date().toISOString().slice(0,10)}"></label>
-    <label class="field"><span>الملف</span><input class="input" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.dcm,application/pdf,image/png,image/jpeg,image/webp" required></label>
-    <small>PDF أو صورة أو DICOM، حتى 10 MB. يمكن عرض الصور وPDF هنا، وتنزيل DICOM.</small><p id="attachment-error" class="form-error" role="alert"></p>
+    ${visits.length ? `<label class="field"><span>ربط بزيارة (اختياري)</span><select class="input" name="visit"><option value="">بدون ربط</option>${visits.map(v =>
+      `<option value="${esc(v.id)}">${esc(v.date)} · ${esc(v.id)}</option>`).join('')}</select></label>` : ''}
+    <label class="field"><span>الملف</span><input class="input" name="file" type="file" accept="${labImage ? 'image/png,image/jpeg,image/webp' : '.pdf,.png,.jpg,.jpeg,.webp,.dcm,application/pdf,image/png,image/jpeg,image/webp'}" required></label>
+    <small>${labImage ? 'صورة JPG أو PNG أو WebP، حتى 10 MB.' : 'PDF أو صورة أو DICOM، حتى 10 MB. يمكن عرض الصور وPDF هنا، وتنزيل DICOM.'}</small><p id="attachment-error" class="form-error" role="alert"></p>
     <div class="attachment-form-actions"><button type="button" class="button secondary" data-action="close">إلغاء</button><button type="submit" class="button primary">حفظ المرفق</button></div>
   </form>`);
   $('#attachment-form').addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.currentTarget;
+    if (demoSession?.role !== uploader || (uploader === 'doctor' && !doctorCanAccess(patientId))) return;
     const file = form.elements.file.files[0];
     const title = form.elements.title.value.trim();
-    const kind = role === 'radiologist' ? 'أشعة' : form.elements.kind.value;
+    const kind = uploader === 'radiologist' ? 'أشعة' : form.elements.kind.value;
+    const visit = visits.find(v => v.id === form.elements.visit?.value)?.id;
     const date = form.elements.date.value;
     const error = $('#attachment-error');
     if (!title || !file || !date || !['أشعة','تحليل','تقرير','مستند آخر'].includes(kind)) { error.textContent='أكمل عنوان المرفق ونوعه وتاريخه والملف.'; return; }
     if (file.size > 10*1024*1024 || !/\.(pdf|png|jpe?g|webp|dcm)$/i.test(file.name)) { error.textContent='اختر PDF أو صورة أو DICOM بحجم لا يتجاوز 10 MB.'; return; }
+    if (uploader === 'patient' && kind === 'تحليل' && !isAttachmentImage(file.name)) { error.textContent='أضف نتيجة المختبر كصورة JPG أو PNG أو WebP.'; return; }
+    if (form.dataset.saving) return;
+    form.dataset.saving = 'true';
+    const submit = event.submitter;
+    if (submit) submit.disabled = true;
     const id = 'F' + crypto.randomUUID();
     try {
       await saveAttachmentBytes(id, file);
-      db.attachments.push({id,patient:patientId,title,kind,date,filename:file.name,mime:file.type,size:file.size,uploader:role});
+      db.attachments.push({id,patient:patientId,title,kind,date,filename:file.name,mime:file.type,size:file.size,uploader,visit});
       log('إضافة مرفق ' + kind, patientId);
-      closeModal();render();toast('تم حفظ المرفق ويمكن عرضه الآن.');
-    } catch { error.textContent='تعذر حفظ الملف في هذا المتصفح. جرّب ملفًا أصغر أو مساحة تخزين متاحة.'; }
+      if (form.isConnected) { closeModal();render();toast('تم حفظ المرفق ويمكن عرضه الآن.'); }
+    } catch {
+      error.textContent='تعذر حفظ الملف في هذا المتصفح. جرّب ملفًا أصغر أو مساحة تخزين متاحة.';
+      delete form.dataset.saving;
+      if (submit) submit.disabled = false;
+    }
   });
 }
 
 async function showAttachment(id) {
   const meta = db.attachments.find(a => a.id === id && (role !== 'patient' || a.patient === demoSession.patientId) && (role === 'patient' || a.patient === selected));
-  if (!meta) return;
+  if (!meta || (role === 'doctor' && !doctorCanAccess(meta.patient))) return;
+  const session = demoSession;
   let file;
   try { file = await loadAttachmentBytes(id); } catch { toast('تعذر فتح الملف المحفوظ.'); return; }
+  if (session !== demoSession || (role === 'doctor' && !doctorCanAccess(meta.patient))) return;
+  if (role === 'doctor' && file) log('عرض مرفق طبي',meta.id);
   if (!file) { toast('هذا المرفق قديم أو غير متاح في هذا المتصفح.'); return; }
   if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
   attachmentPreviewUrl = URL.createObjectURL(file);
@@ -114,12 +139,12 @@ async function showAttachment(id) {
 }
 
 document.addEventListener('change', event => {
-  if (event.target.id === 'attachment-patient' && role !== 'patient' && db.patients.some(p=>p.id===event.target.value)) { selected=event.target.value; render(); }
+  if (event.target.id === 'attachment-patient' && (role === 'radiologist' || role === 'doctor' && doctorCanAccess(event.target.value)) && db.patients.some(p=>p.id===event.target.value)) { selected=event.target.value; render(); }
 });
 document.addEventListener('click', event => {
   const element = event.target.closest('[data-action]');
-  if (!element || !demoSession) return;
-  if (element.dataset.action === 'attachment-upload') openAttachmentForm();
+  if (!element || !demoSession || !allowAction(element.dataset.action,element)) return;
+  if (element.dataset.action === 'attachment-upload') openAttachmentForm(element.dataset.kind);
   if (element.dataset.action === 'attachment-open') showAttachment(element.dataset.id);
   if (element.dataset.action === 'attachment-filter' && role === 'patient' && ['all','أشعة','تقرير','تحليل','مستند آخر'].includes(element.dataset.kind)) { patientArchiveKind=element.dataset.kind; render(); }
   if (element.dataset.action === 'close' && attachmentPreviewUrl) { URL.revokeObjectURL(attachmentPreviewUrl); attachmentPreviewUrl=null; }

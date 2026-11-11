@@ -49,6 +49,13 @@ function healthArchiveFiles(patientId) {
     '<div class="patient-archive-results">' + (sections || '<div class="attachment-empty">لا توجد ملفات مطابقة. جرّب تصنيفًا آخر أو أضف مرفقًا جديدًا.</div>') + '</div>';
 }
 
+function healthArchiveFileRow(a) {
+  return '<article class="health-archive-detail"><div><strong>' + esc(a.title) + '</strong><time>' +
+    esc(healthArchiveDateLabel(a.date)) + '</time></div><p>' + esc(a.kind) + ' · ' + esc(a.filename) + '</p>' +
+    (a.id ? button(isAttachmentImage(a.filename) ? 'عرض الصورة' : 'عرض الملف', 'attachment-open', 'secondary small',
+      'data-id="' + esc(a.id) + '"') : '') + '</article>';
+}
+
 function patientHealthArchivePage() {
   const p = patient();
   const attachments = db.attachments.filter(a => a.patient === p.id);
@@ -73,20 +80,42 @@ function patientHealthArchivePage() {
   const timeline = events.length ? '<div class="health-archive-timeline">' + events.map(e => '<div class="health-archive-event"><span>' + icon(e.icon) + '</span><div><strong>' + esc(e.title) + '</strong><p>' + esc(e.detail) + '</p></div><time>' + esc(healthArchiveDateLabel(e.date)) + '</time></div>').join('') + '</div>' : '<p class="health-archive-empty">لا توجد أحداث مسجلة في الملف بعد.</p>';
   const vitalRows = vitals ? [['النبض',vitals.pulse,'نبضة/دقيقة'],['ضغط الدم',vitals.pressure,'mmHg'],['الحرارة',vitals.temp,'°C'],['تشبع الأكسجين',vitals.spo2,'%']].map(([label,value,unit]) => '<div class="health-archive-vital"><span>' + label + '</span><strong><bdi>' + esc(value || '—') + ' ' + unit + '</bdi></strong></div>').join('') + '<p class="health-archive-footnote">آخر قراءات مسجلة؛ تاريخ القياس غير متاح في المعاينة.</p>' : '<p class="health-archive-empty">لا توجد قراءات مسجلة.</p>';
   const appointmentRows = appointments.slice(0,3).map(a => '<div class="health-archive-appointment"><div><strong>' + esc(healthArchiveDateLabel(a.date)) + '</strong><small>' + esc(a.doctor + ' · ' + a.type) + '</small></div><bdi>' + esc(a.time) + '</bdi></div>').join('') || '<p class="health-archive-empty">لا يوجد موعد قادم.</p>';
-  const overview = '<div class="health-archive-grid"><div class="health-archive-main-column">' +
+  const overview = '<div class="health-archive-grid">' +
     healthArchivePanel('ملخص ملفك',summary) +
+    healthArchivePanel('العلامات الحيوية المسجلة','<div class="health-archive-vitals">' + vitalRows + '</div>') +
     healthArchivePanel('التسلسل الزمني للرعاية',timeline,'<span>الأحدث أولًا</span>') +
-    '</div><aside class="health-archive-side-column">' +
-    healthArchivePanel('العلامات الحيوية المسجلة',vitalRows) +
     healthArchivePanel('مواعيدك القادمة',appointmentRows,'<a href="#appointments">عرض الكل</a>') +
-    '</aside></div>';
-  const visitBody = visits.length ? visits.map(v => '<article class="health-archive-detail"><div><strong>زيارة سريرية معتمدة</strong><time>' + esc(healthArchiveDateLabel(v.date)) + '</time></div><p>تم اعتماد الزيارة في ملفك الطبي.</p></article>').join('') : '<p class="health-archive-empty">لا توجد زيارات معتمدة في الملف بعد.</p>';
-  const sharedBody = sharedPlans.length ? sharedPlans.map(r => '<article class="health-archive-detail"><div><strong>تعليمات مشاركة من الطبيب</strong><time>' + esc(healthArchiveDateLabel(r.date)) + '</time></div><p>' + esc(r.plan) + '</p></article>').join('') : '<p class="health-archive-empty">لم يشارك الطبيب تعليمات متابعة بعد.</p>';
-  const visitsTab = '<div class="health-archive-stack">' + healthArchivePanel('الزيارات السابقة',visitBody) + healthArchivePanel('تعليمات الطبيب المتاحة لك',sharedBody) + '</div>';
+    '</div>';
+  const visitBody = visits.length ? visits.map(v => {
+    const sameDay = visits.filter(item => item.date === v.date);
+    const shared = sharedPlans.find(report => report.visit && report.visit === v.id) ||
+      (sameDay.length === 1 ? sharedPlans.find(report => !report.visit && report.date === v.date) : null);
+    const linked = attachments.filter(a => a.visit && a.visit === v.id);
+    const files = linked.map(a => healthArchiveFileRow(a)).join('');
+    const plan = shared?.plan ? '<h4>خطة الطبيب</h4><p>' + esc(shared.plan) + '</p>' : '';
+    const instructions = shared?.instructions ? '<h4>تعليمات المتابعة</h4><p>' + esc(shared.instructions) + '</p>' : '';
+    const prescription = shared?.medications ? '<h4>الروشتة</h4><p>' + esc(shared.medications) + '</p>' : '';
+    return '<article class="health-archive-detail"><div><strong>زيارة سريرية معتمدة</strong><time>' +
+      esc(healthArchiveDateLabel(v.date)) + '</time></div><details class="health-archive-visit-details"><summary>التقارير والروشتة والمرفقات</summary>' +
+      (plan + instructions + prescription + files || '<p>لا توجد مستندات مشتركة أو مرفقات مرتبطة بهذه الزيارة.</p>') +
+      '</details></article>';
+  }).join('') : '<p class="health-archive-empty">لا توجد زيارات معتمدة في الملف بعد.</p>';
+  const unlinkedPlans = sharedPlans.filter(report => report.plan && !visits.some(v => (report.visit && v.id === report.visit) ||
+    (!report.visit && v.date === report.date && visits.filter(item => item.date === v.date).length === 1)));
+  const sharedBody = unlinkedPlans.map(report => '<article class="health-archive-detail"><div><strong>تعليمات مشاركة من الطبيب</strong><time>' +
+    esc(healthArchiveDateLabel(report.date)) + '</time></div><p>' + esc(report.plan) + '</p></article>').join('');
+  const visitsTab = '<div class="health-archive-stack">' + healthArchivePanel('الزيارات السابقة',visitBody) +
+    (sharedBody ? healthArchivePanel('تعليمات الطبيب المتاحة لك',sharedBody) : '') + '</div>';
   const orderBody = orders.length ? orders.map(o => '<article class="health-archive-detail"><div><strong>' + esc(o.type) + '</strong><time>' + esc(healthArchiveDateLabel(o.date)) + '</time></div><p>طلب فحص مسجل؛ راجع المرفقات للاطلاع على أي ملف مضاف.</p></article>').join('') : '<p class="health-archive-empty">لا توجد طلبات فحوصات معتمدة في الملف.</p>';
-  const testFiles = attachments.filter(a => ['أشعة','تحليل','تقرير'].includes(a.kind));
-  const testBody = testFiles.length ? testFiles.slice().reverse().map(a => '<article class="health-archive-detail"><div><strong>' + esc(a.title) + '</strong><time>' + esc(healthArchiveDateLabel(a.date)) + '</time></div><p>' + esc(a.kind) + ' · ' + esc(a.filename) + '</p>' + (a.id ? button('عرض الملف','attachment-open','secondary small','data-id="' + esc(a.id) + '"') : '') + '</article>').join('') : '<p class="health-archive-empty">لا توجد ملفات فحوصات مضافة بعد.</p>';
-  const testsTab = '<div class="health-archive-stack">' + healthArchivePanel('طلبات الفحوصات',orderBody) + healthArchivePanel('ملفات الأشعة والتحاليل والتقارير',testBody) + '</div>';
+  const labImages = attachments.filter(a => a.kind === 'تحليل' && isAttachmentImage(a.filename));
+  const otherTests = attachments.filter(a => ['أشعة','تحليل','تقرير'].includes(a.kind) && !labImages.includes(a));
+  const testsTab = '<div class="health-archive-stack">' +
+    healthArchivePanel('صور نتائج المختبر', labImages.slice().reverse().map(healthArchiveFileRow).join('') ||
+      '<p class="health-archive-empty">لا توجد صور نتائج مختبر بعد.</p>',
+      button('إضافة صورة نتيجة','attachment-upload','secondary small','data-kind="تحليل"')) +
+    healthArchivePanel('طلبات الفحوصات',orderBody) +
+    (otherTests.length ? healthArchivePanel('ملفات الفحوصات والتقارير',otherTests.slice().reverse().map(healthArchiveFileRow).join('')) : '') +
+    '</div>';
   const content = patientHealthTab === 'visits' ? visitsTab : patientHealthTab === 'tests' ? testsTab : patientHealthTab === 'files' ? healthArchiveFiles(p.id) : overview;
   return '<section class="health-archive-page"><header class="health-archive-title"><div><span>بوابة المريض / مرفقاتي</span><h1>أرشيفي الصحي</h1><p>مواعيدك وزياراتك وفحوصاتك وملفاتك في مكان واحد.</p></div><div class="health-archive-actions">' + button(icon('calendar') + ' حجز موعد','book','secondary') + button(icon('plus') + ' إضافة مرفق','attachment-upload','primary') + '</div></header>' +
     identity + '<nav class="health-archive-tabs" role="tablist" aria-label="أقسام الأرشيف الصحي">' + tabs + '</nav><div class="health-archive-content" role="tabpanel">' + content + '</div><p class="attachment-disclaimer">بيانات عرض محلية في هذا المتصفح. لا تُدخل بيانات طبية حقيقية.</p></section>';

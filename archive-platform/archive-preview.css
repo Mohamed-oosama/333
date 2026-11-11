@@ -83,3 +83,24 @@
 @media(max-width:600px){
   .archive-return-btn { font-size: 10px; padding: 4px 8px; margin-inline-end: 4px; }
 }
+
+/* Patient archive identity and tab layout from the original portal. */
+.archive-workspace--patient{max-width:none;padding-inline:clamp(12px,1.9vw,28px);background:#f2f8f8}
+.patient-archive-identity{display:flex;align-items:center;gap:18px;min-height:132px;padding:19px 25px;border:1px solid #c5e1e4;border-radius:16px;background:#fff}
+.patient-archive-identity .avatar{width:68px;height:68px;background:#fbe6eb;color:#b9687b;font-size:22px;font-weight:600}
+.patient-archive-identity h2{font-size:22px;color:#0b3441;margin-bottom:5px}
+.patient-archive-identity p{font-size:13px;color:#53717c}
+.patient-archive-tabs{display:flex;gap:8px;overflow-x:auto;margin-top:18px;border-bottom:1px solid #c5e1e4}
+.patient-archive-tabs button{flex:none;padding:13px 17px 15px;border:0;border-bottom:2px solid transparent;background:transparent;color:#53717c;font-size:14px;font-weight:800;white-space:nowrap}
+.patient-archive-tabs button[aria-selected=true]{border-bottom-color:#0b8290;color:#0b3441}
+.patient-archive-tabs button:focus-visible{outline-offset:-4px}
+.patient-archive-panel{padding-block:16px}
+.patient-archive-panel>.card+.card{margin-top:10px}
+@media(max-width:600px){
+  .patient-archive-identity{gap:12px;min-height:104px;padding:13px}
+  .patient-archive-identity .avatar{width:50px;height:50px;font-size:18px}
+  .patient-archive-identity h2{font-size:18px}
+  .patient-archive-identity p{font-size:11px}
+  .patient-archive-tabs{gap:0;margin-top:12px}
+  .patient-archive-tabs button{padding:10px 9px;font-size:12px}
+}

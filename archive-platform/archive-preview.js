@@ -9,13 +9,14 @@
   const card = (title,body,side='') => `<section class="card"><header class="card-head"><h2>${title}</h2>${side}</header><div class="card-body">${body}</div></section>`;
   const row = (a,b) => `<div class="info-row"><span>${a}</span><strong>${b}</strong></div>`;
   const empty = (title,detail) => `<div class="empty"><strong>${title}</strong>${detail}</div>`;
+  const patientTabs = [
+    {id:'summary', title:'الملخص', sections:{overview:'الملخص'}},
+    {id:'visits', title:'الزيارات', sections:{history:'سجل الزيارات',appointments:'المواعيد'}},
+    {id:'tests', title:'الفحوصات والطلبات', sections:{labs:'صور نتائج المختبر',imaging:'الأشعة'}},
+    {id:'files', title:'الملفات المرفقة', sections:{documents:'المرفقات',reports:'التقارير',prescriptions:'الروشتات'}}
+  ];
+
   const archiveGroups = {
-    patient: [
-      {title:'الزيارات والمواعيد', sections:{history:'سجل الزيارات',appointments:'المواعيد'}},
-      {title:'الفحوصات والنتائج', sections:{labs:'صور نتائج المختبر',imaging:'الأشعة'}},
-      {title:'التقارير والمرفقات', sections:{reports:'التقارير',documents:'المرفقات'}},
-      {title:'الأدوية', sections:{prescriptions:'الروشتات والأدوية'}}
-    ],
     doctor: [
       {title:'الزيارات والمواعيد', sections:{history:'سجل الزيارات',encounters:'تسجيل زيارة',appointments:'المواعيد'}},
       {title:'الفحوصات والنتائج', sections:{labs:'التحاليل',pacs:'الأشعة',ai:'مراجعة AI'}},
@@ -81,7 +82,7 @@
     documents:[{id:'DOC-501',patient:'CL-1024',visitId:'VIS-206',name:'صورة تقرير الزيارة.pdf',category:'PDF',date:'2026-11-06',source:'الطبيب المعالج',size:'268 KB'}, {id:'DOC-502',patient:'CL-1024',visitId:'VIS-206',name:'صورة الأشعة.jpg',category:'JPG',date:'2026-11-05',source:'قسم الأشعة',size:'1.4 MB'}, {id:'DOC-508',patient:'CL-1031',name:'نتائج المختبر.pdf',category:'PDF',date:'2026-11-03',source:'المختبر',size:'320 KB'}],
     audit:[{date:'2026-11-08 09:35',actor:'د. سارة أحمد',action:'مراجعة ملف المريض',target:'CL-1024',detail:'عرض آخر الزيارات'}, {date:'2026-11-06 14:10',actor:'د. سارة أحمد',action:'توقيع تقرير',target:'REP-311',detail:'الإصدار 2'}, {date:'2026-11-05 11:20',actor:'د. مريم فؤاد',action:'اعتماد تحليل AI',target:'AI-701',detail:'مشاركة النتيجة مع المريض'}]
   };
-  const state = {role:'patient',section:'',patient:'CL-1024',query:'',filter:'الكل',study:'IMG-2408',compare:false,multiSeries:false,annotation:false,measure:false,panX:0,panY:0,zoom:1,rotate:0,brightness:1,drafts:{},draft:{complaint:'',history:'',symptoms:'',vitals:'',exam:'',assessment:'',diagnosis:'',plan:'',prescription:'',followup:'',notes:''},draftStatus:'مسودة',draftVersion:1};
+  const state = {role:'patient',section:'overview',patient:'CL-1024',query:'',filter:'الكل',study:'IMG-2408',compare:false,multiSeries:false,annotation:false,measure:false,panX:0,panY:0,zoom:1,rotate:0,brightness:1,drafts:{},draft:{complaint:'',history:'',symptoms:'',vitals:'',exam:'',assessment:'',diagnosis:'',plan:'',prescription:'',followup:'',notes:''},draftStatus:'مسودة',draftVersion:1};
   const blankDraft = () => ({complaint:'',history:'',symptoms:'',vitals:'',exam:'',assessment:'',diagnosis:'',plan:'',prescription:'',followup:'',notes:''});
   const switchPatient = (id) => {state.drafts[state.patient]={draft:{...state.draft},status:state.draftStatus,version:state.draftVersion};state.patient=id;const saved=state.drafts[id];state.draft=saved?{...saved.draft}:blankDraft();state.draftStatus=saved?.status||'مسودة';state.draftVersion=saved?.version||1;state.study=db.studies.find(x=>x.patient===id)?.id||'';state.compare=false;state.multiSeries=false;};
   const current = () => db.patients.find(p=>p.id===state.patient) || db.patients[0];
@@ -94,7 +95,7 @@
     collectDraft();
     if (role === 'patient' && state.patient !== 'CL-1024') switchPatient('CL-1024');
     state.role = role;
-    state.section = Object.hasOwn(panels[role], section) ? section : '';
+    state.section = Object.hasOwn(panels[role], section) ? section : (role === 'patient' ? 'overview' : '');
     state.query = '';
     state.filter = 'الكل';
     render();
@@ -110,7 +111,7 @@
 
   function openSection(section, toggle = false, control) {
     const next = toggle && section === state.section ? '' : section;
-    const group = archiveGroups[state.role].findIndex(item => Object.hasOwn(item.sections, section));
+    const group = archiveGroups.doctor.findIndex(item => Object.hasOwn(item.sections, section));
     setView(state.role, next);
     const trigger = $(`[data-action="${control}"][data-section="${section}"]`) ||
       $(`[aria-controls="archive-group-${group}"]`);
@@ -278,7 +279,7 @@
   function doctorPrescriptions(){return head('إضافة وصفة تجريبية ومراجعة الوصفات السابقة للمريض المحدد.',button('إضافة دواء','add-rx','primary'))+`<div class="notice">الوصفات هنا بيانات خيالية للمعاينة فقط، ولا تُستخدم للعلاج.</div>${card('الوصفات الحالية والسابقة',prescriptionList(records('prescriptions')))}`;}
   function doctorReports(){const all=records('reports');const cats=['الكل',...new Set(all.map(x=>x.category))];return head('معاينة التقارير وحالات الاعتماد والإصدارات.',button('مسودة سريرية جديدة','nav','primary','data-section="encounters"'))+searchToolbar('ابحث باسم التقرير أو رقمه',cats)+reportTiles(all.filter(x=>matches(`${x.name} ${x.id}`,x.category)));}
   const panels = {
-    patient:{history:patientHistory,appointments:patientAppointments,labs:patientLabs,imaging:patientImaging,reports:patientReports,documents:patientDocuments,prescriptions:patientPrescriptions},
+    patient:{overview:null,history:patientHistory,appointments:patientAppointments,labs:patientLabs,imaging:patientImaging,reports:patientReports,documents:patientDocuments,prescriptions:patientPrescriptions},
     doctor:{history:()=>card('سجل الزيارات',timeline(records('visits'))),appointments:()=>card('المواعيد المسجلة',appointments(records('appointments'))),encounters:doctorEncounters,labs:doctorLabs,pacs:doctorPacs,ai:doctorAI,reports:doctorReports,documents:()=>documentsView(true),prescriptions:doctorPrescriptions}
   };
 
@@ -300,10 +301,42 @@
     </section>`;
   }
 
+  function patientArchive(p, summary) {
+    const active = patientTabs.find(tab => Object.hasOwn(tab.sections, state.section));
+    const tabs = patientTabs.map(tab => {
+      const selected = tab === active;
+      const section = Object.keys(tab.sections)[0];
+      return `<button type="button" id="patient-tab-${tab.id}" role="tab"
+        data-action="patient-tab" data-section="${section}" aria-controls="patient-archive-panel"
+        aria-selected="${selected}" tabindex="${selected ? 0 : -1}">${tab.title}</button>`;
+    }).join('');
+    const entries = Object.entries(active.sections);
+    const choices = entries.length > 1 ? `<div class="group-choices" role="group" aria-label="${active.title}">
+      ${entries.map(([key, title]) => button(title, 'nav', key === state.section ? 'soft' : '',
+        `data-section="${key}" aria-pressed="${key === state.section}"`)).join('')}
+    </div>` : '';
+    return `<section class="patient-archive-identity">
+      <span class="avatar" aria-hidden="true">${esc(p.initials)}</span>
+      <div>
+        <h2>${esc(p.name)}</h2>
+        <p>رقم الملف: <bdi>${esc(p.id)}</bdi> · ${esc(p.age)} سنة · ${esc(p.gender)}</p>
+        <p>الطبيب المتابع: ${esc(p.doctor || 'لم يُحدد بعد')}</p>
+      </div>
+    </section>
+    <div class="patient-archive-tabs" role="tablist" aria-label="أقسام الأرشيف الصحي">${tabs}</div>
+    <div class="patient-archive-panel" id="patient-archive-panel" role="tabpanel" aria-labelledby="patient-tab-${active.id}" tabindex="0">
+      ${choices}${state.section === 'overview'
+        ? card('ملخص الملف', summary + row('الحساسية', esc(p.allergy)) + row('آخر زيارة', fmt(p.last)))
+        : panels.patient[state.section]()}
+    </div>`;
+  }
+
   function render() {
     const p = current();
     const visit = records('appointments').filter(a => a.status === 'مؤكد')
       .sort((a,b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
+    const summary = `<div class="archive-summary"><span>الحالة المسجلة <strong>${esc(p.condition)}</strong></span>
+          <span>الموعد القادم <strong>${visit ? `${fmt(visit.date)} · <bdi class="num">${visit.time}</bdi>` : 'لا يوجد موعد مسجل'}</strong></span></div>`;
     const patientPicker = isPatient() ? '' : `<label class="archive-picker">ملف المريض
       <select class="select" id="archive-patient">${assignedPatients().map(item =>
         `<option value="${item.id}" ${item.id === p.id ? 'selected' : ''}>${esc(item.name)} · ${item.id}</option>`
@@ -318,12 +351,9 @@
           <button type="button" data-action="role" data-role="doctor" class="${isPatient() ? '' : 'active'}" aria-pressed="${!isPatient()}">الطبيب</button>
         </div>
       </header>
-      <main class="workspace archive-workspace" id="preview-main">
+      <main class="workspace archive-workspace ${isPatient() ? 'archive-workspace--patient' : ''}" id="preview-main">
         <div class="archive-intro"><div><span class="eyebrow">${isPatient() ? 'بوابة المريض' : 'مساحة الطبيب'}</span><h1>${isPatient() ? 'أرشيفي الطبي' : 'الأرشيف الطبي للمريض'}</h1></div>${patientPicker}</div>
-        ${profile(p)}
-        <div class="archive-summary"><span>الحالة المسجلة <strong>${esc(p.condition)}</strong></span>
-          <span>الموعد القادم <strong>${visit ? `${fmt(visit.date)} · <bdi class="num">${visit.time}</bdi>` : 'لا يوجد موعد مسجل'}</strong></span></div>
-        <div class="archive-groups">${archiveGroups[state.role].map(groupMarkup).join('')}</div>
+        ${isPatient() ? patientArchive(p, summary) : `${profile(p)}${summary}<div class="archive-groups">${archiveGroups.doctor.map(groupMarkup).join('')}</div>`}
       </main>
       <footer class="app-footer">معاينة الأرشيف الطبي · بيانات خيالية</footer>
     </div>`;
@@ -349,7 +379,7 @@
   function collectDraft(){const form=$('#encounter-form');if(!form)return;new FormData(form).forEach((v,k)=>{state.draft[k]=String(v)});}
   function uploadDialog(){showDialog('إضافة مرفق تجريبي',`<div class="notice">يُعرض اسم الملف فقط داخل هذه الصفحة، دون رفعه أو تخزين محتواه.</div><form id="upload-form" class="field-grid"><label class="field">اسم الملف<input name="name" required placeholder="مثال: تقرير متابعة.pdf"></label><label class="field">النوع<select name="category"><option>PDF</option><option>JPG</option><option>PNG</option><option>DICOM</option><option>NIfTI</option><option>DOCX</option></select></label><label class="field wide">ملف من جهازك (اختياري)<input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.dcm,.nii,.docx"></label></form>`,button('إضافة للمعاينة','submit-upload','primary')+button('إلغاء','close-dialog'));}
   function rxDialog(){showDialog('وصفة تجريبية جديدة',`<div class="notice warn">لا تضع بيانات أو وصفات حقيقية في هذه المعاينة.</div><form id="rx-form" class="field-grid"><label class="field">اسم الدواء<input required name="name" placeholder="اسم دواء خيالي"></label><label class="field">الجرعة<input required name="dose" placeholder="الجرعة"></label><label class="field">التكرار<input required name="frequency" placeholder="مرة يوميًا"></label><label class="field">المدة<input required name="duration" placeholder="7 أيام"></label><label class="field wide">الإرشادات<textarea name="instructions" placeholder="تعليمات تجريبية"></textarea></label></form>`,button('حفظ وصفة العرض','submit-rx','primary')+button('إلغاء','close-dialog'));}
-  function handleAction(el){const action=el.dataset.action,id=el.dataset.id;switch(action){case 'role':changeRole(el.dataset.role);break;case 'nav':openSection(el.dataset.section,false,'nav');break;case 'toggle-group':openSection(el.dataset.section,true,'toggle-group');break;case 'study':studyDialog(id);break;case 'lab-detail':detailDialog('lab',id);break;case 'rx-detail':detailDialog('rx',id);break;case 'report-detail':detailDialog('report',id);break;case 'doc-detail':detailDialog('doc',id);break;case 'ai-detail':detailDialog('ai',id);break;case 'download':download(el.dataset.kind,id);break;case 'upload':uploadDialog();break;case 'upload-lab':if(isPatient())labUploadDialog();break;case 'add-rx':rxDialog();break;case 'close-dialog':closeDialog();break;case 'close-overlay':break;case 'zoom-in':state.zoom=Math.min(2,state.zoom+.2);refreshViewer();break;case 'zoom-out':state.zoom=Math.max(.6,state.zoom-.2);refreshViewer();break;case 'rotate':state.rotate=(state.rotate+90)%360;refreshViewer();break;case 'compare':state.compare=!state.compare;if(state.compare)state.multiSeries=false;refreshViewer();break;case 'multi-series':state.multiSeries=!state.multiSeries;if(state.multiSeries)state.compare=false;refreshViewer();break;case 'annotation':state.annotation=!state.annotation;refreshViewer();break;case 'measure':state.measure=!state.measure;refreshViewer();break;case 'pan':state.panX=state.panX>=40?0:state.panX+20;state.panY=state.panY>=20?0:state.panY+10;refreshViewer();break;case 'save-encounter':collectDraft();state.draftStatus='مسودة';db.audit.unshift({date:'2026-11-08 11:15',actor:'د. سارة أحمد',action:'حفظ مسودة زيارة',target:current().id,detail:`الإصدار ${state.draftVersion}`});render();toast('حُفظت المسودة داخل هذه المعاينة');break;case 'finalize-encounter':collectDraft();if(!state.draft.complaint.trim()||!state.draft.assessment.trim()){toast('اكتب الشكوى والتقييم قبل الاعتماد');break;}state.draftStatus='معتمد';render();toast('اعتمد التقرير التجريبي، ويمكن توقيعه الآن');break;case 'sign-encounter':if(state.draftStatus!=='معتمد')break;state.draftStatus='موقع';db.audit.unshift({date:'2026-11-08 11:20',actor:'د. سارة أحمد',action:'توقيع تقرير تجريبي',target:current().id,detail:`الإصدار ${state.draftVersion}`});render();toast('وُقع التقرير التجريبي وقُفلت هذه النسخة');break;case 'new-version':state.draftVersion++;state.draftStatus='مسودة';render();toast('بدأت نسخة تصحيح جديدة مع حفظ النسخة الموقعة');break;case 'preview-encounter':collectDraft();showDialog('معاينة تقرير الزيارة',`<div class="notice">تقرير تجريبي · الإصدار ${state.draftVersion} · ${state.draftStatus}</div>${Object.entries(draftLabels).map(([k,v])=>row(v,esc(state.draft[k]||'لم يُسجل بعد'))).join('')}`);break;case 'ai-approve':updateAI(id,'معتمد للمشاركة',true);break;case 'ai-reject':updateAI(id,'مرفوض',false);break;case 'ai-rerun':runMockAI(id);break;case 'run-ai':runMockAI();break;case 'approve-report':updateReport(id,'معتمد',false);break;case 'share-report':updateReport(id,'معتمد',true);break;case 'submit-upload':submitUpload();break;case 'submit-rx':submitRx();break;}}
+  function handleAction(el){const action=el.dataset.action,id=el.dataset.id;switch(action){case 'role':changeRole(el.dataset.role);break;case 'patient-tab':openSection(el.dataset.section,false,'patient-tab');break;case 'nav':openSection(el.dataset.section,false,'nav');break;case 'toggle-group':openSection(el.dataset.section,true,'toggle-group');break;case 'study':studyDialog(id);break;case 'lab-detail':detailDialog('lab',id);break;case 'rx-detail':detailDialog('rx',id);break;case 'report-detail':detailDialog('report',id);break;case 'doc-detail':detailDialog('doc',id);break;case 'ai-detail':detailDialog('ai',id);break;case 'download':download(el.dataset.kind,id);break;case 'upload':uploadDialog();break;case 'upload-lab':if(isPatient())labUploadDialog();break;case 'add-rx':rxDialog();break;case 'close-dialog':closeDialog();break;case 'close-overlay':break;case 'zoom-in':state.zoom=Math.min(2,state.zoom+.2);refreshViewer();break;case 'zoom-out':state.zoom=Math.max(.6,state.zoom-.2);refreshViewer();break;case 'rotate':state.rotate=(state.rotate+90)%360;refreshViewer();break;case 'compare':state.compare=!state.compare;if(state.compare)state.multiSeries=false;refreshViewer();break;case 'multi-series':state.multiSeries=!state.multiSeries;if(state.multiSeries)state.compare=false;refreshViewer();break;case 'annotation':state.annotation=!state.annotation;refreshViewer();break;case 'measure':state.measure=!state.measure;refreshViewer();break;case 'pan':state.panX=state.panX>=40?0:state.panX+20;state.panY=state.panY>=20?0:state.panY+10;refreshViewer();break;case 'save-encounter':collectDraft();state.draftStatus='مسودة';db.audit.unshift({date:'2026-11-08 11:15',actor:'د. سارة أحمد',action:'حفظ مسودة زيارة',target:current().id,detail:`الإصدار ${state.draftVersion}`});render();toast('حُفظت المسودة داخل هذه المعاينة');break;case 'finalize-encounter':collectDraft();if(!state.draft.complaint.trim()||!state.draft.assessment.trim()){toast('اكتب الشكوى والتقييم قبل الاعتماد');break;}state.draftStatus='معتمد';render();toast('اعتمد التقرير التجريبي، ويمكن توقيعه الآن');break;case 'sign-encounter':if(state.draftStatus!=='معتمد')break;state.draftStatus='موقع';db.audit.unshift({date:'2026-11-08 11:20',actor:'د. سارة أحمد',action:'توقيع تقرير تجريبي',target:current().id,detail:`الإصدار ${state.draftVersion}`});render();toast('وُقع التقرير التجريبي وقُفلت هذه النسخة');break;case 'new-version':state.draftVersion++;state.draftStatus='مسودة';render();toast('بدأت نسخة تصحيح جديدة مع حفظ النسخة الموقعة');break;case 'preview-encounter':collectDraft();showDialog('معاينة تقرير الزيارة',`<div class="notice">تقرير تجريبي · الإصدار ${state.draftVersion} · ${state.draftStatus}</div>${Object.entries(draftLabels).map(([k,v])=>row(v,esc(state.draft[k]||'لم يُسجل بعد'))).join('')}`);break;case 'ai-approve':updateAI(id,'معتمد للمشاركة',true);break;case 'ai-reject':updateAI(id,'مرفوض',false);break;case 'ai-rerun':runMockAI(id);break;case 'run-ai':runMockAI();break;case 'approve-report':updateReport(id,'معتمد',false);break;case 'share-report':updateReport(id,'معتمد',true);break;case 'submit-upload':submitUpload();break;case 'submit-rx':submitRx();break;}}
   function refreshViewer(){const inDialog=!!$('#archive-preview-dialog .viewer');if(inDialog){const s=db.studies.find(x=>x.id===state.study);if(s){$('#archive-preview-dialog .viewer').outerHTML=viewer(s,state.compare);return;}}render();}
   function updateAI(id,status,shared){const a=db.ai.find(x=>x.id===id);if(!a||isPatient())return;a.status=status;a.shared=shared;a.reviewer='د. سارة أحمد';db.audit.unshift({date:'2026-11-08 11:30',actor:'د. سارة أحمد',action:status==='مرفوض'?'رفض تحليل AI':'اعتماد تحليل AI',target:id,detail:shared?'مشاركة مع المريض':'بقي غير متاح للمريض'});render();toast(shared?'اعتُمدت النتيجة في مساحة الطبيب':'رُفضت النتيجة');}
   function runMockAI(previousId){
@@ -390,7 +420,17 @@
       $('#archive-patient')?.focus();
     }
     if(e.target.id==='archive-filter'){state.filter=e.target.value;render();}if(e.target.id==='study-select'){state.study=e.target.value;state.compare=false;render();}if(e.target.id==='viewer-slice')toast(`الشريحة ${e.target.value} من 24 — عرض توضيحي`);});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDialog();});
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeDialog();
+    if (event.target.dataset.action !== 'patient-tab') return;
+    const tabs = [...document.querySelectorAll('[data-action="patient-tab"]')];
+    const index = tabs.indexOf(event.target);
+    const next = {ArrowLeft:(index + 1) % tabs.length, ArrowRight:(index + tabs.length - 1) % tabs.length,
+      Home:0, End:tabs.length - 1}[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    tabs[next].click();
+  });
   function readLocation() {
     const [role, section] = location.hash.slice(1).split('/');
     setView(role === 'doctor' ? 'doctor' : 'patient', section);
