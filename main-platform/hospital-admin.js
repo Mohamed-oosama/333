@@ -13,33 +13,46 @@ function hospitalDoctorAdminPage() {
   const doctors = Object.entries(bookingDirectory());
   const visits = new Map();
   for (const visit of db.visits.filter(v=>v.approved && v.doctor)) visits.set(visit.doctor,(visits.get(visit.doctor)||0)+1);
-  return `${pageHead('إدارة الأطباء','أضف الأطباء وحدد العيادات وأوقات الحجز المتاحة للمرضى.',button('إضافة طبيب','add-directory-doctor','primary'),'مساحة الإدارة')}
-    <section class="card">
+  return `<section class="card">
       <div class="card-header"><h2>دليل الأطباء <bdi>(${doctors.length})</bdi></h2>
-        <input class="input admin-doctor-search" id="admin-doctor-search" type="search" aria-label="البحث في دليل الأطباء" placeholder="الاسم، التخصص أو البريد">
       </div>
+      <div class="card-body admin-filters"><input class="input admin-doctor-search" id="admin-doctor-search" type="search" aria-label="البحث في دليل الأطباء" placeholder="الاسم، التخصص أو البريد">
+        <select class="input" id="admin-doctor-specialty" aria-label="التخصص"><option value="">كل التخصصات</option>${bookingDepartments().map(d=>`<option>${esc(d)}</option>`).join('')}</select>
+        ${link(icon('plus')+' إضافة طبيب','admin-doctor/new','primary')}</div>
       <div class="table-wrap"><table>
         <thead><tr><th>الطبيب</th><th>البريد المهني</th><th>التخصص والعيادة</th><th>المواعيد</th><th>كشوف معتمدة</th><th>الحالة</th><th>الإجراء</th></tr></thead>
-        <tbody>${doctors.map(([name,d]) => `<tr data-admin-doctor>
+        <tbody>${doctors.map(([name,d]) => `<tr data-admin-doctor="${esc(d.department)}">
           <td><strong>${esc(name)}</strong></td>
           <td><bdi>${esc(d.email || '—')}</bdi></td>
           <td>${esc(d.department)}<br><small>${esc(d.specialty)} · ${esc(d.clinic)} · ${esc(d.location)}</small></td>
           <td>${d.days.map(day => bookingDayNames[day]).join('، ')}<br><bdi>${esc(d.hours[0])}–${esc(d.hours.at(-1))}</bdi></td>
           <td>${adminNumber(visits.get(name)||0)}</td>
           <td>${badge(d.active === false ? 'الحجز موقوف' : 'متاح للحجز',d.active === false ? 'gray' : 'emerald')}</td>
-          <td>${button('تعديل','edit-directory-doctor','secondary small',`data-id="${esc(name)}" aria-label="تعديل ${esc(name)}"`)}</td>
+          <td>${link('فتح الملف','admin-doctor/'+encodeURIComponent(name),'secondary small')}</td>
         </tr>`).join('')}</tbody>
       </table></div>
       <p id="admin-doctor-empty" class="card-body" hidden>لا يوجد طبيب مطابق للبحث.</p>
+      <div class="card-body admin-directory-pager">
+        <span id="admin-doctor-count" aria-live="polite"></span>
+        <div class="admin-quick-links">
+          <button class="button secondary small" id="admin-doctor-prev" type="button">السابق</button>
+          <button class="button secondary small" id="admin-doctor-next" type="button">التالي</button>
+        </div>
+      </div>
     </section>`;
 }
 
-function hospitalBookingAdminPage() {
+function hospitalBookingAdminPage(tab) {
   if (!isHospitalAdmin()) return '';
   const appointments = [...db.appointments].sort((a,b) => (b.date+b.time).localeCompare(a.date+a.time));
-  return `${adminHeading('admin-bookings','ضغط العيادات اليوم، وقائمة الحجوزات وحالاتها.')}
-    ${adminClinicOperations()}
-    <section class="card"><div class="table-wrap"><table>
+  const section = ['admissions','referrals'].includes(tab) ? tab : '';
+  const tabs = adminTabs('admin-bookings',[['','الحجوزات'],['admissions','التنويم والطوارئ'],['referrals','الإحالات']],section);
+  const data = adminOperationalData();
+  const body = section === 'admissions' ? adminSection('الأسرة وحالات الإشغال',adminTable(['السرير','الموقع','الحالة'],adminBeds().map(b=>[esc(b.name),esc(adminFacilityPath(b)),esc(adminBedStates[b.state] || '—')]),'لا توجد أسرّة مسجلة.'),link('إدارة الأسرة','admin-facilities','secondary'))+adminLedgerTable('emergency') :
+    section === 'referrals' ? adminLedgerTable('referrals') : adminSummary([
+      ['في الانتظار الآن',data.waiting.length,'المرضى في قائمة الانتظار'],['حجوزات اليوم',data.todays.length,'كل الحالات'],
+      ['حجوزات مؤكدة',appointments.filter(a=>a.status==='مؤكد').length,'الحجوزات المسجلة']
+    ])+`<section class="card"><div class="card-header"><h2>قائمة الحجوزات</h2>${button(icon('plus')+' حجز جديد','book','primary')}</div><div class="table-wrap"><table>
       <thead><tr><th>المريض</th><th>الطبيب</th><th>الموعد</th><th>الحالة</th><th>الإجراء</th></tr></thead>
       <tbody>${appointments.map(a => `<tr>
         <td>${esc(db.patients.find(p => p.id === a.patient)?.name || a.patient)}</td><td>${esc(a.doctor)}</td>
@@ -47,7 +60,8 @@ function hospitalBookingAdminPage() {
         <td>${badge(a.status,a.status === 'ملغي' ? 'gray' : 'emerald')}</td>
         <td>${canEditBooking(a) ? button('إلغاء الموعد','cancel-booking','danger small',`data-id="${esc(a.id)}"`) : '—'}</td>
       </tr>`).join('')}</tbody>
-    </table></div>${appointments.length ? '' : '<p class="card-body">لا توجد حجوزات مسجلة.</p>'}</section>`;
+    </table></div>${appointments.length ? '' : '<p class="quiet-empty">لا توجد حجوزات مسجلة.</p>'}</section>`+adminClinicOperations();
+  return adminHeading('admin-bookings','الحجوزات والتنويم والطوارئ والإحالات.')+tabs+body;
 }
 
 function adminFormFooter() {
@@ -87,28 +101,34 @@ function clinicTimeInMinutes(time) {
 
 const normalizeStaffEmail = value => String(value ?? '').trim().toLowerCase();
 
-function editHospitalDoctor(name = '') {
+function editHospitalDoctor(name = '', host = null) {
   if (!isHospitalAdmin()) return;
   const directory = bookingDirectory();
   const doctor = name ? directory[name] : null;
   if (name && !doctor) return;
   const facilities = adminFacilities().filter(item=>item.type==='clinic');
-  modal(doctor ? 'تعديل الطبيب' : 'إضافة طبيب', `<form id="admin-doctor-form" class="form-grid">
-    <label class="field full"><span>اسم الطبيب</span><input class="input" name="name" value="${esc(name)}" maxlength="80" ${doctor?'readonly':''} required></label>
-    <label class="field full"><span>البريد المهني للطبيب (اختياري)</span><input class="input" type="email" dir="ltr" name="email" autocomplete="off" maxlength="120" value="${esc(doctor?.email || '')}"></label>
+  const basicFields = `<label class="field"><span>اسم الطبيب</span><input class="input" name="name" value="${esc(name)}" maxlength="80" ${doctor?'readonly':''} required></label>
+    <label class="field"><span>البريد المهني للطبيب (اختياري)</span><input class="input" type="email" dir="ltr" name="email" autocomplete="off" maxlength="120" value="${esc(doctor?.email || '')}"></label>
+    ${field('رقم الهاتف (اختياري)','phone',doctor?.phone,'tel','maxlength="24"')}
     <label class="field"><span>التخصص</span><input class="input" name="department" list="admin-specialties" value="${esc(doctor?.department || '')}" maxlength="70" required></label>
     <datalist id="admin-specialties">${bookingDepartments().map(department => `<option value="${esc(department)}">`).join('')}</datalist>
     <label class="field"><span>المسمّى المهني</span><input class="input" name="specialty" value="${esc(doctor?.specialty || '')}" maxlength="90" required></label>
     ${facilities.length ? adminSelect('عيادة من هيكل المستشفى','facilityId',
       [['','إدخال موقع يدوي'],...facilities.map(item=>[item.id,adminFacilityPath(item)])],doctor?.facilityId||'') : ''}
     <label class="field"><span>اسم العيادة</span><input class="input" name="clinic" value="${esc(doctor?.clinic || '')}" maxlength="80" required></label>
-    <label class="field"><span>مكان العيادة</span><input class="input" name="location" value="${esc(doctor?.location || '')}" maxlength="140" required placeholder="المبنى، الدور، رقم العيادة"></label>
-    <fieldset class="admin-doctor-days full"><legend>أيام العمل</legend>${bookingDayNames.map((day,i) =>
+    <label class="field"><span>مكان العيادة</span><input class="input" name="location" value="${esc(doctor?.location || '')}" maxlength="140" required placeholder="المبنى، الدور، رقم العيادة"></label>`;
+  const scheduleFields = `<fieldset class="admin-doctor-days full"><legend>أيام العمل</legend>${bookingDayNames.map((day,i) =>
       `<label><input type="checkbox" name="day" value="${i}" ${doctor?.days.includes(i) ? 'checked' : ''}> ${day}</label>`).join('')}</fieldset>
     <label class="field"><span>أول موعد</span><input class="input" name="start" type="time" value="${esc(doctor?.hours[0] || '09:00')}" required></label>
     <label class="field"><span>آخر موعد</span><input class="input" name="end" type="time" value="${esc(doctor?.hours.at(-1) || '12:00')}" required></label>
-    <label class="full"><input type="checkbox" name="active" ${doctor?.active !== false ? 'checked' : ''}> متاح للحجز</label>
-    ${adminFormFooter()}</form>`);
+    <label class="full"><input type="checkbox" name="active" ${doctor?.active !== false ? 'checked' : ''}> متاح للحجز</label>`;
+  const content = host ? adminSection('البيانات الأساسية',`<div class="form-grid">${basicFields}</div>`) +
+    adminSection('أوقات الحجز',`<div class="form-grid">${scheduleFields}</div>`) +
+    `<p id="admin-form-error" role="alert"></p><div class="admin-quick-links"><button type="submit" class="button primary">حفظ الطبيب</button>${link('إلغاء','manage-doctors','secondary')}</div>`
+    : basicFields+scheduleFields+adminFormFooter();
+  const markup = `<form id="admin-doctor-form" class="${host?'admin-doctor-file':'form-grid'}">${content}</form>`;
+  if (host) host.innerHTML=markup;
+  else modal(doctor ? 'تعديل الطبيب' : 'إضافة طبيب', markup);
   const form = $('#admin-doctor-form');
   const locationInputs = [form.elements.clinic,form.elements.location];
   const refreshFacility = () => locationInputs.forEach(input=>{input.disabled=!!form.elements.facilityId?.value;});
@@ -142,22 +162,45 @@ function editHospitalDoctor(name = '') {
     for (let minutes=start; minutes<=end; minutes+=30) hours.push(
       String(Math.floor(minutes/60)).padStart(2,'0') + ':' + String(minutes%60).padStart(2,'0'));
     const {department,specialty,clinic,location} = fields;
-    const entry = {name:key,email,department,specialty,clinic,location,facilityId,days:[...new Set(days)],hours,active:data.has('active')};
+    const phone = data.get('phone').trim();
+    if (phone && !/^\+?[\d\s()-]{7,24}$/.test(phone)) { error.textContent='أدخل رقم هاتف صالحًا.'; return; }
+    const entry = {name:key,email,phone,department,specialty,clinic,location,facilityId,days:[...new Set(days)],hours,active:data.has('active')};
     db.doctorDirectory = [...(db.doctorDirectory || []).filter(item => item.name !== key),entry];
     log(doctor ? 'تعديل بيانات طبيب' : 'إضافة طبيب إلى دليل الحجز',key);
     closeModal();
-    render();
+    if (host && !name) location.hash='admin-doctor/'+encodeURIComponent(key);
+    else render();
     toast(doctor ? 'تم تحديث بيانات الطبيب.' : 'تمت إضافة الطبيب إلى دليل الحجز.');
   });
 }
 
-document.addEventListener('input', event => {
-  if (event.target.id !== 'admin-doctor-search' || !isHospitalAdmin()) return;
-  const query = event.target.value.trim().toLocaleLowerCase('ar');
-  const rows = [...document.querySelectorAll('[data-admin-doctor]')];
-  for (const row of rows) row.hidden = !row.textContent.toLocaleLowerCase('ar').includes(query);
-  $('#admin-doctor-empty').hidden = rows.some(row => !row.hidden);
-});
+function bindAdminDoctorDirectory() {
+  const search=$('#admin-doctor-search');
+  if (!search) return;
+  const specialty=$('#admin-doctor-specialty');
+  const previous=$('#admin-doctor-prev'), next=$('#admin-doctor-next');
+  const rows=$$('[data-admin-doctor]');
+  const pageSize=5;
+  let page=0;
+  function display() {
+    const query=search.value.trim().toLocaleLowerCase('ar');
+    const matching=rows.filter(row=>(!specialty.value||row.dataset.adminDoctor===specialty.value) &&
+      row.textContent.toLocaleLowerCase('ar').includes(query));
+    const start=page*pageSize;
+    const visible=new Set(matching.slice(start,start+pageSize));
+    for (const row of rows) row.hidden=!visible.has(row);
+    $('#admin-doctor-empty').hidden=matching.length>0;
+    $('#admin-doctor-count').textContent='عرض '+adminNumber(visible.size)+' من '+adminNumber(matching.length)+' طبيبًا';
+    previous.disabled=page===0;
+    next.disabled=start+pageSize>=matching.length;
+  }
+  const filter=()=>{page=0;display();};
+  search.addEventListener('input',filter);
+  specialty.addEventListener('change',filter);
+  previous.addEventListener('click',()=>{page--;display();});
+  next.addEventListener('click',()=>{page++;display();});
+  display();
+}
 
 const RECEPTION_STAFF_KEY = 'clarimed-reception-staff-v1';
 
@@ -177,8 +220,7 @@ function activeReceptionStaff(session) {
 function hospitalReceptionAdminPage() {
   if (!isHospitalAdmin()) return '';
   const staff = receptionStaff();
-  return `${pageHead('حسابات الاستقبال','أضف موظفي الاستقبال وتحكم في إتاحة دخولهم.',button('إضافة موظف استقبال','add-reception-staff','primary'),'مساحة الإدارة')}
-    <section class="card"><div class="card-header"><h2>فريق الاستقبال <bdi>(${staff.length})</bdi></h2></div>
+  return `<section class="card"><div class="card-header"><h2>فريق الاستقبال <bdi>(${staff.length})</bdi></h2>${button('إضافة موظف استقبال','add-reception-staff','primary')}</div>
     ${staff.length ? `<div class="table-wrap"><table>
       <thead><tr><th>الموظف</th><th>البريد المهني</th><th>الحالة</th><th>الإجراء</th></tr></thead>
       <tbody>${staff.map(account => `<tr><td><strong>${esc(account.name)}</strong></td>

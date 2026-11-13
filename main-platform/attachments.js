@@ -122,20 +122,23 @@ function openAttachmentForm(initialKind) {
 }
 
 async function showAttachment(id) {
-  const meta = db.attachments.find(a => a.id === id && (role !== 'patient' || a.patient === demoSession.patientId) && (role === 'patient' || a.patient === selected));
+  const admin = isHospitalAdmin();
+  const meta = admin ? adminDocuments().find(a=>a.id===id) :
+    db.attachments.find(a => a.id === id && (role !== 'patient' || a.patient === demoSession.patientId) && (role === 'patient' || a.patient === selected));
   if (!meta || (role === 'doctor' && !doctorCanAccess(meta.patient))) return;
   const session = demoSession;
   let file;
   try { file = await loadAttachmentBytes(id); } catch { toast('تعذر فتح الملف المحفوظ.'); return; }
   if (session !== demoSession || (role === 'doctor' && !doctorCanAccess(meta.patient))) return;
-  if (role === 'doctor' && file) log('عرض مرفق طبي',meta.id);
+  if ((role === 'doctor' || admin) && file) log('عرض مرفق طبي',meta.id);
   if (!file) { toast('هذا المرفق قديم أو غير متاح في هذا المتصفح.'); return; }
   if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
   attachmentPreviewUrl = URL.createObjectURL(file);
   const image = /\.(png|jpe?g|webp)$/i.test(meta.filename);
   const pdf = /\.pdf$/i.test(meta.filename);
   const preview = image ? `<img class="attachment-preview-image" src="${attachmentPreviewUrl}" alt="${esc(meta.title)}">` : pdf ? `<iframe class="attachment-preview-pdf" src="${attachmentPreviewUrl}" title="${esc(meta.title)}"></iframe>` : '<p>لا يمكن عرض DICOM داخل هذه المعاينة. يمكنك تنزيله وفتحه بعارض طبي مناسب.</p>';
-  modal(esc(meta.title), `<div class="attachment-preview">${preview}<p>${esc(meta.filename)} · ${esc(meta.date)}</p><a class="button primary" href="${attachmentPreviewUrl}" download="${esc(meta.filename)}">تنزيل الملف</a></div>`);
+  modal(esc(meta.title), `<div class="attachment-preview">${preview}<p>${esc(meta.filename)} · ${esc(meta.date)}</p><a id="attachment-download" class="button primary" href="${attachmentPreviewUrl}" download="${esc(meta.filename)}">تنزيل الملف</a></div>`);
+  if (admin) $('#attachment-download').addEventListener('click',()=>{ if (isHospitalAdmin()) log('تنزيل مرفق طبي',meta.id); });
 }
 
 document.addEventListener('change', event => {

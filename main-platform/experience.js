@@ -29,7 +29,7 @@ const shortNav = {
   queue: 'الاستقبال', audit: 'سجل النشاط'
 };
 const initials = name => name.split(' ').slice(0, 2).map(x => x[0]).join(' ');
-const logo = (subtitle, target) => `<a class="wordmark" href="#${target}"><img class="brand-logo" src="./assets/mnu-university-logo.jpg" alt="شعار جامعة المنصورة الجديدة" /><span class="wordmark-copy"><strong>${esc(hospitalProfile().name)}</strong><span>${subtitle}</span></span></a>`;
+const logo = () => `<a class="wordmark" href="#home"><img class="brand-logo" src="./assets/mnu-university-logo.jpg" alt="شعار جامعة المنصورة الجديدة" /><span class="wordmark-copy"><strong>${esc(hospitalProfile().name)}</strong></span></a>`;
 
 function allowAction(action, el) {
   if (['toggle-password', 'toggle-register-password', 'login-help'].includes(action)) return false;
@@ -44,12 +44,12 @@ function allowAction(action, el) {
     return ['book','book-doctor','doctor-profile', 'contact', 'attachment-upload', 'attachment-open', 'attachment-filter', 'health-archive-tab'].includes(action);
   }
   if (role === 'radiologist') return ['attachment-upload', 'attachment-open'].includes(action);
-  if (role === 'admin') return ['reset','confirm-reset','edit-hospital','add-directory-doctor','edit-directory-doctor','add-reception-staff','edit-reception-staff',
+  if (role === 'admin') return ['reset','confirm-reset','edit-hospital','add-directory-doctor','edit-directory-doctor','add-reception-staff','edit-reception-staff','book','new-patient','admin-book-patient','attachment-open',
     'admin-add-facility','admin-edit-facility','admin-add-employee','admin-edit-employee','admin-add-stock','admin-edit-stock',
-    'admin-export-csv','admin-print-report'].includes(action) ||
+    'admin-print-report'].includes(action) ||
     (['cancel-booking','confirm-cancel'].includes(action) && db.appointments.some(a => a.id === el.dataset.id && canEditBooking(a)));
   if (role === 'reception') return ['book','new-patient','confirm-appointment','arrive-appointment',
-    'reception-person','reception-card','reception-book-person','reception-print','reception-verify','reception-queue-next'].includes(action) ||
+    'reception-card','reception-book-person','reception-print','reception-verify','reception-queue-next','reception-book-slot'].includes(action) ||
     (['edit-booking','cancel-booking','confirm-cancel'].includes(action) && db.appointments.some(a => a.id === el.dataset.id && canEditBooking(a)));
   if (role === 'doctor') {
     if (['vitals','attachment-upload','attachment-open'].includes(action)) return doctorCanAccess(selected);
@@ -71,46 +71,52 @@ function loginPage(kind) {
   document.body.dataset.surface = 'login';
   document.title = (isPatient ? 'دخول المريض' : 'دخول ' + roles[mode]) + ' | MNU 333';
   $('#app').innerHTML = `
-    <div class="auth-page ${isPatient ? 'auth-patient' : 'auth-doctor'}">
+    <div class="auth-page auth-login ${isPatient ? 'auth-patient' : 'auth-doctor'}">
       <header class="auth-header">
-        ${logo('المستشفى والرعاية المتصلة', 'home')}
-        <nav class="portal-login-nav" aria-label="اختيار بوابة الدخول">${portalNavigation(mode === 'radiologist' ? 'doctor' : mode)}</nav>
+        ${logo()}
+        <nav class="portal-login-nav" aria-label="اختيار بوابة الدخول">${portalNavigation(portal.id, true)}</nav>
       </header>
       <main class="auth-layout">
         <section class="auth-story" aria-labelledby="auth-story-title">
           <div class="auth-eyebrow">${icon(isPatient ? 'heart' : 'doctor')} ${isPatient ? 'مساحتك الصحية' : 'للرعاية السريرية'}</div>
-          <h1 id="auth-story-title">${staffEntry ? staffEntry.headline : isPatient ? 'رعايتك،<br><em>أقرب إليك.</em>' : 'مساحة تركيز.<br><em>لرعاية أدق.</em>'}</h1>
+          <h2 id="auth-story-title">${staffEntry ? staffEntry.headline : isPatient ? 'رعايتك،<br><em>أقرب إليك.</em>' : 'مساحة تركيز،<br><em>لرعاية أدق.</em>'}</h2>
           <p class="auth-description">${staffEntry ? portal.description : isPatient
-            ? 'موعدك القادم، وتعليمات طبيبك، ومتابعتك الصحية.<br>كل ما تحتاجه في مكان بسيط وواضح.'
-            : 'من أول زيارة إلى اعتماد المتابعة.<br>ملف المريض والفحوصات ومسار الرعاية، أمامك بوضوح.'}</p>
+            ? 'موعدك القادم، وتعليمات طبيبك، ومتابعتك الصحية. كل ما تحتاجه في مكان بسيط وواضح.'
+            : 'من أول زيارة إلى اعتماد المتابعة. ملف المريض والفحوصات ومسار الرعاية، أمامك بوضوح.'}</p>
           <div class="auth-benefits">
-            ${staffEntry ? `<div class="auth-benefit">${icon(portal.icon)}<div><strong>${portal.title}</strong><p>${portal.description}</p></div></div>` : (isPatient
-              ? [['calendar', 'مواعيدك على راحتك', 'احجز موعدًا وتابع تفاصيل زيارتك القادمة.'], ['file', 'تعليمات طبيبك معك', 'ارجع لإرشادات المتابعة التي شاركها طبيبك.'], ['user', 'ملف يخصّك', 'راجع بيانات التواصل ومعلومات ملفك.']]
-              : [['users', 'ملف واحد، رؤية أوضح', 'انتقل بين مرضى اليوم وراجع تفاصيل كل زيارة.'], ['brain', 'سبعة نماذج، تحت مراجعتك', 'مساحات مستقلة للأشعة والأنسجة والتقارير والتحاليل.'], ['check', 'قرارك يكمل الرعاية', 'اكتب التقييم، اعتمد الزيارة، وشارك تعليمات المتابعة.']]
-            ).map(([i,t,d]) => `<div class="auth-benefit">${icon(i)}<div><strong>${t}</strong><p>${d}</p></div></div>`).join('')}
+            ${staffEntry ? `<div class="auth-benefit"><span class="auth-benefit-icon">${icon(portal.icon)}</span><div><strong>${portal.title}</strong><p>${portal.description}</p></div></div>` : (isPatient
+              ? [['calendar', 'مواعيدي على راحتي', 'احجز موعدًا وتابع تفاصيل زيارتك القادمة.'], ['file', 'تعليمات طبيبك معك', 'ارجع لإرشادات المتابعة التي شاركها طبيبك.'], ['user', 'ملف يخصّك', 'راجع بيانات التواصل ومعلومات ملفك.']]
+              : [['users', 'ملف واحد، رؤية أوضح', 'انتقل بين مرضى اليوم وراجع تفاصيل كل زيارة.'], ['grid', 'سبعة نماذج تحت مراجعتك', 'مساحات مستقلة للأشعة والأنسجة والتقارير والتحاليل.'], ['check', 'قرارك يكمل الرعاية', 'اكتب التقييم، اعتمد الزيارة، وشارك تعليمات المتابعة.']]
+            ).map(([i,t,d]) => `<div class="auth-benefit"><span class="auth-benefit-icon">${icon(i)}</span><div><strong>${t}</strong><p>${d}</p></div></div>`).join('')}
           </div>
-          <div class="auth-story-foot">MNU 333 <span>${isPatient ? 'خطوة بخطوة، مع طبيبك.' : 'رعاية تبدأ بالمعلومة وتنتهي بقرار الطبيب.'}</span></div>
         </section>
         <section class="auth-form-area">
           <div class="login-form-wrap">
             <span class="section-kicker">${mode === 'radiologist' ? roles[mode] : portal?.title || roles[mode]}</span>
-            <h2>${staffEntry ? staffEntry.welcome : isPatient ? 'أهلًا بعودتك' : mode==='radiologist' ? 'أهلًا بطبيب الأشعة' : 'أهلًا دكتور'}</h2>
+            <h1>${staffEntry ? staffEntry.welcome : isPatient ? 'أهلًا بعودتك' : mode==='radiologist' ? 'أهلًا بطبيب الأشعة' : 'أهلًا دكتور'}</h1>
             <p class="login-intro">${staffEntry ? portal.description : isPatient ? 'ادخل لمتابعة مواعيدك وتعليمات الرعاية.' : mode==='radiologist' ? 'أضف صور الأشعة وراجع مرفقات المريض.' : 'ادخل لمتابعة مرضاك وزياراتك.'}</p>
             <form id="login-form">
-              <label class="field"><span>${isPatient ? 'رقم الملف أو رقم الهاتف' : 'البريد المهني'}</span>
-                <input class="input" id="login-identifier" name="identifier" type="${isPatient ? 'text' : 'email'}" dir="ltr" autocomplete="off" required placeholder="${isPatient ? 'مثال: CL-1024' : email}">
-              </label>
-              <label class="field"><span>كلمة المرور</span>
-                <span class="password-wrap"><input class="input" id="login-password" name="password" type="password" autocomplete="off" required placeholder="أدخل كلمة المرور" dir="ltr">
-                  <button type="button" class="password-toggle" data-action="toggle-password" aria-label="إظهار كلمة المرور" aria-pressed="false">${icon('eye')}</button>
-                </span>
-              </label>
+              <div class="field">
+                <label for="login-identifier">${isPatient ? 'رقم الملف أو رقم الهاتف' : 'البريد المهني'}</label>
+                <div class="login-input-wrap">
+                  ${icon(isPatient ? 'user' : 'mail')}
+                  <input class="input" id="login-identifier" name="identifier" type="${isPatient ? 'text' : 'email'}" dir="ltr" autocomplete="off" required placeholder="${isPatient ? 'مثال: CL-1024' : email}">
+                </div>
+              </div>
+              <div class="field">
+                <label for="login-password">كلمة المرور</label>
+                <div class="login-input-wrap">
+                  ${icon('lock')}
+                  <input class="input" id="login-password" name="password" type="password" autocomplete="off" required placeholder="أدخل كلمة المرور" dir="ltr">
+                  <button type="button" class="password-toggle" data-action="toggle-password" aria-label="إظهار كلمة المرور" aria-pressed="false">${icon('eye')}<span>إظهار</span></button>
+                </div>
+              </div>
               <div class="login-form-meta"><label class="remember-me"><input type="checkbox" name="remember"><span>تذكرني</span></label><button type="button" class="text-link" data-action="login-help">نسيت كلمة المرور؟</button></div>
               <p id="login-error" class="form-error" role="alert"></p>
-              <button type="submit" class="button primary full login-submit">${isPatient ? 'دخول إلى بوابتي' : mode==='radiologist' ? 'دخول إلى مساحة الأشعة' : staffEntry ? 'دخول إلى مساحة العمل' : 'دخول إلى مساحة الطبيب'} ${icon('arrow')}</button>
+              <button type="submit" class="button primary full login-submit">${isPatient ? 'دخول إلى بوابتي' : mode==='radiologist' ? 'دخول إلى مساحة الأشعة' : staffEntry ? 'دخول إلى مساحة العمل' : 'دخول إلى مساحة الطبيب'} <span class="login-submit-arrow">${icon('arrow')}</span></button>
             </form>
-            ${isPatient ? '<p class="register-prompt">مريض جديد؟ <a href="#register">أنشئ حسابك</a></p>' : staffEntry ? '' : '<p class="register-prompt">حساب طبيب جديد؟ يتم تفعيله من إدارة المستشفى.</p>'}
-            <p class="demo-explanation">عرض تفاعلي محلي · استخدم بيانات غير حقيقية فقط.</p>
+            ${isPatient ? '<p class="register-prompt">مريض جديد؟ <a href="#register">أنشئ حسابك</a></p>' : staffEntry ? '' : `<p class="login-note">${icon('info')} حساب طبيب جديد؟ يتم تفعيله من إدارة المستشفى.</p>`}
+            <p class="login-note">${icon('info')} عرض تفاعلي محلي · استخدم بيانات غير حقيقية فقط.</p>
           </div>
         </section>
       </main>
@@ -156,7 +162,7 @@ function registerPage() {
   $('#app').innerHTML = `
     <div class="auth-page auth-patient register-page">
       <header class="auth-header">
-        ${logo('المستشفى والرعاية المتصلة', 'home')}
+        ${logo()}
         <nav class="portal-login-nav" aria-label="تنقل التسجيل">${portalNavigation('patient')}</nav>
       </header>
       <main class="register-layout">
@@ -306,7 +312,7 @@ function render() {
     history.replaceState(null,'','#login/reception');
     closeModal();
   }
-  const [requested='', id] = location.hash.slice(1).split('/');
+  const [requested='', id, section] = location.hash.slice(1).split('/');
   if (requested==='home' || (!requested && !demoSession)) { hospitalHome(); return; }
   if (requested==='register') { registerPage(); return; }
   if (requested==='login' || !demoSession) {
@@ -315,6 +321,7 @@ function render() {
     return;
   }
   role=demoSession.role;
+  if (['reception','admin'].includes(role)) db=readLocalDatabase() || db;
   if (role==='patient') selected=demoSession.patientId;
   const fallback=role==='patient'?'portal':role==='radiologist'?'documents':'dashboard';
   const route=allowed[role].includes(requested)?requested:fallback;
@@ -329,23 +336,32 @@ function render() {
   if (!$('.hybrid-shell') || $('.hybrid-shell').dataset.role!==role) shell();
   const pages={dashboard,'manage-doctors':hospitalDoctorAdminPage,'manage-reception':hospitalReceptionAdminPage,'admin-bookings':hospitalBookingAdminPage,consultations:consultationsPage,patients,record,encounter,appointments,queue,ai,documents,portal,audit,settings,'patient-reports':patientReports,'patient-profile':patientProfile,'patient-doctors':patientDoctorsPage,'patient-attachments':patientAttachmentsPage};
   if (role === 'reception') Object.assign(pages, {
-    patients:receptionPatientsPage, appointments:receptionBookingsPage,
-    'reception-checkin':() => receptionBookingsPage(true), queue:receptionQueuePage,
-    'reception-schedule':receptionSchedulePage, 'reception-reports':receptionReportsPage
+    patients:receptionPatientsPage, appointments:()=>receptionTimetable(id),
+    'reception-checkin':()=>receptionDesk(id), queue:()=>receptionDesk(id),
+    'reception-schedule':()=>receptionTimetable('schedule'), 'reception-reports':receptionAnalytics,
+    'reception-file':()=>receptionFile(id,section), 'reception-billing':receptionBilling, 'reception-admissions':receptionAdmissions
   });
   if (role === 'doctor') Object.assign(pages, {
     patients:doctorPatientPage, record:doctorRecordPage, appointments:doctorSchedulePage, 'doctor-reports':doctorReportsPage
   });
   if (role === 'admin') Object.assign(pages, {
-    'admin-facilities':adminFacilitiesPage,'admin-staff':adminStaffPage,'admin-patients':adminPatientsPage,
-    'admin-inventory':adminInventoryPage,'admin-diagnostics':adminDiagnosticsPage,'admin-models':adminModelsPage,'admin-reports':adminReportsPage
+    'manage-doctors':() => adminPeoplePage(route, id), 'admin-staff':() => adminPeoplePage(route, id),
+    'manage-reception':() => adminPeoplePage(route, id), 'admin-doctor':() => adminDoctorFile(id, section),
+    'admin-patient':() => adminPatientFile(id, section), 'admin-archive':() => adminArchivePage(id),
+    'admin-billing':() => adminBillingPage(id), 'admin-bookings':() => hospitalBookingAdminPage(id),
+    'admin-inventory':() => adminInventoryPage(id), 'admin-patients':() => adminPatientsPage(id),
+    'admin-facilities':() => adminHospitalPage(id), settings:() => adminHospitalPage('backup'),
+    'admin-reports':() => adminReportHub(id), audit:() => adminReportHub('audit'),
+    'admin-diagnostics':() => adminDiagnosticsPage(id), 'admin-models':() => adminDiagnosticsPage('models')
   });
   $('#main').dataset.route=route;
   $('#main').innerHTML=blockedRecord?doctorNoPatients():route==='model'?modelPage(id):(pages[route]||dashboard)();
   const title=(role === 'reception' && receptionTitles[route])||(role === 'doctor' && doctorTitles[route])||(role === 'admin' && adminTitles[route])||shortNav[route]||({portal:'ملخص رعايتي','patient-reports':'تعليمات الطبيب','patient-profile':'بياناتي','patient-doctors':'الأطباء والتخصصات',record:'ملف المريض',encounter:'الزيارة',model:'النماذج السبعة'})[route];
   document.title=(title||'مساحة الرعاية')+' | MNU 333';
   $$('[data-nav]').forEach(a=>{
-    const active=a.dataset.nav===route || (a.dataset.nav==='patients'&&['record','encounter'].includes(route)) || (a.dataset.nav==='ai'&&route==='model');
+    const active=a.dataset.nav===route || (role==='admin' && a.dataset.nav===adminNavParent[route]) ||
+      (role==='reception' && a.dataset.nav===receptionNavParent[route]) ||
+      (a.dataset.nav==='patients'&&['record','encounter'].includes(route)) || (a.dataset.nav==='ai'&&route==='model');
     a.classList.toggle('active',active);
     if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
   });
@@ -370,6 +386,7 @@ document.addEventListener('click',e=>{
     const input=$('#login-password');const show=input.type==='password';
     input.type=show?'text':'password';el.setAttribute('aria-pressed',String(show));
     el.setAttribute('aria-label',show?'إخفاء كلمة المرور':'إظهار كلمة المرور');
+    el.querySelector('span:last-child').textContent = show ? 'إخفاء' : 'إظهار';
   }
   if(action==='toggle-register-password'){
     const input=el.parentElement.querySelector('input');const show=input.type==='password';
@@ -398,5 +415,7 @@ render();
 
 window.addEventListener('storage', event => {
   if (event.key === LOCAL_DATABASE_KEY && demoSession?.role === 'doctor' && location.hash === '#appointments') render();
+  if (event.key === LOCAL_DATABASE_KEY && ['reception','admin'].includes(demoSession?.role) &&
+    !$('#modal-root .modal') && !document.activeElement?.matches('input, select, textarea')) render();
   if ((event.key === RECEPTION_STAFF_KEY || event.key === null) && demoSession?.staffId && !activeReceptionStaff(demoSession)) render();
 });

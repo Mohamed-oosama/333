@@ -1,16 +1,16 @@
 const receptionTitles = {
-  dashboard: 'لوحة الاستقبال', patients: 'إدارة المرضى', appointments: 'إدارة الحجوزات',
-  'reception-checkin': 'تسجيل الوصول', queue: 'قائمة الانتظار',
-  'reception-schedule': 'جداول العيادات', 'reception-reports': 'تقارير الاستقبال'
+  dashboard: 'لوحة الاستقبال', patients: 'المرضى', appointments: 'الحجوزات والجداول',
+  'reception-checkin': 'مكتب الاستقبال', queue: 'مكتب الاستقبال', 'reception-file':'ملف المريض',
+  'reception-schedule': 'الحجوزات والجداول', 'reception-reports': 'التقارير',
+  'reception-billing':'الحسابات والمدفوعات', 'reception-admissions':'الإقامة: الدخول والخروج'
 };
 const receptionQueueStates = {
   waiting: {label: 'في الانتظار', next: 'called', action: 'نداء المريض'},
   called: {label: 'تم النداء', next: 'in-consultation', action: 'بدء الكشف'},
-  'in-consultation': {label: 'قيد الكشف'},
+  'in-consultation': {label: 'داخل الكشف', next: 'completed', action: 'إنهاء الكشف'},
   completed: {label: 'اكتمل الكشف'}
 };
 let receptionScheduleDate = '';
-let receptionReportDate = '';
 let receptionBookingQuery = '';
 
 const receptionToday = () => bookingDateKey(new Date());
@@ -87,18 +87,6 @@ function receptionNotices() {
     count + ' · ' + label + '</a></div></div>').join('') || '<p class="quiet-empty">لا توجد تنبيهات تشغيلية.</p>';
 }
 
-function receptionDashboard() {
-  const {metrics} = receptionStats(receptionToday());
-  return receptionPageHead('dashboard', esc(receptionDate(receptionToday())),
-    button(icon('plus') + ' تسجيل مريض', 'new-patient', 'primary') + link('تسجيل الوصول', 'reception-checkin', 'secondary')) +
-    receptionMetrics(metrics) +
-    '<div class="reception-grid">' + receptionCard('إجراءات الاستقبال',
-      '<div class="reception-actions">' + button('حجز موعد', 'book', 'primary') +
-      link('إدارة المرضى', 'patients', 'secondary') + link('قائمة الانتظار', 'queue', 'secondary') +
-      link('جداول العيادات', 'reception-schedule', 'secondary') + '</div>') +
-    receptionCard('التنبيهات', receptionNotices()) + '</div>';
-}
-
 function receptionPatientsPage() {
   const people = db.patients.filter(p => receptionMatches(p, query));
   return receptionPageHead('patients', 'ابحث عن الملف الإداري للمريض، أو سجّل مريضًا جديدًا.',
@@ -106,101 +94,7 @@ function receptionPatientsPage() {
     receptionCard('سجل المرضى', '<label class="field reception-search"><span>البحث عن مريض</span>' +
       '<input class="input" id="patient-search" type="search" placeholder="الاسم، رقم الملف، الهاتف أو رقم الحجز" value="' + esc(query) + '"></label>' +
       receptionRows(people.map(p => receptionRow(esc(p.name), '<bdi>' + esc(p.id) + '</bdi> · ' + esc(p.status || 'مسجل'),
-        button('عرض الملف الإداري', 'reception-person', 'secondary small', receptionIdAttr(p))))));
-}
-
-function receptionBookingsPage(checkin = false) {
-  const bookings = db.appointments.filter(a => (!checkin || a.date === receptionToday() &&
-    ['بانتظار التأكيد','مؤكد','تم تسجيل الوصول'].includes(a.status)) &&
-    (receptionSearchText(a.id) === receptionSearchText(receptionBookingQuery) ||
-      receptionMatches(receptionPerson(a.patient) || {id:a.patient}, receptionBookingQuery, false))).sort(receptionBookingOrder);
-  return receptionPageHead(checkin ? 'reception-checkin' : 'appointments',
-    checkin ? 'راجع هوية المريض عند حضوره، ثم سجّل الوصول لإصدار رقم الانتظار.' : 'تابع الحجوزات وأكّدها أو عدّل المواعيد المتاحة.',
-    checkin ? link('قائمة الانتظار', 'queue', 'secondary') : button(icon('plus') + ' حجز موعد', 'book', 'primary')) +
-    receptionCard(checkin ? 'حجوزات اليوم' : 'المواعيد المسجلة',
-      '<label class="field reception-search"><span>البحث عن حجز</span><input class="input" id="reception-booking-search" type="search" ' +
-      'placeholder="رقم الحجز، اسم المريض، رقم الملف أو الهاتف" value="' + esc(receptionBookingQuery) + '"></label>' +
-      receptionRows(bookings.map(a => {
-        const attrs = receptionIdAttr(a);
-        const canChange = !checkin && canEditBooking(a);
-        const actions = badge(a.status, a.status === 'ملغي' ? 'gray' : 'teal') +
-          (a.status === 'بانتظار التأكيد' && a.date >= receptionToday() ? button('تأكيد الحجز', 'confirm-appointment', 'primary small', attrs) : '') +
-          (a.status === 'مؤكد' && a.date === receptionToday() ? button('تسجيل الوصول', 'reception-verify', 'primary small', attrs) : '') +
-          (canChange ? button('تعديل', 'edit-booking', 'secondary small', attrs) + button('إلغاء', 'cancel-booking', 'danger small', attrs) : '');
-        const detail = [a.id, a.patient, a.doctor, receptionClinic(a), receptionDate(a.date), a.time].map(v => '<bdi>' + esc(v) + '</bdi>').join(' · ');
-        return receptionRow(esc(receptionPerson(a.patient)?.name || a.patient), detail, actions);
-      })));
-}
-
-function receptionQueuePage() {
-  const queue = db.appointments.filter(a => a.queueDate === receptionToday() ||
-    (!a.queueDate && a.date === receptionToday() && a.status === 'تم تسجيل الوصول'))
-    .sort((a,b) => (a.queueNumber || 0) - (b.queueNumber || 0));
-  return receptionPageHead('queue', 'الدور اليوم حسب تسجيل الوصول.', link('تسجيل وصول', 'reception-checkin', 'primary')) +
-    receptionCard('دور العيادات', receptionRows(queue.map(a => {
-      const state = receptionQueueStates[a.queueState] || receptionQueueStates.waiting;
-      const arrived = Date.parse(a.arrivalAt);
-      const elapsed = (Date.parse(a.calledAt) || Date.now()) - arrived;
-      const wait = Number.isFinite(elapsed) ? ' · انتظار ' + Math.max(0, Math.floor(elapsed / 60000)) + ' د' : '';
-      const time = Number.isFinite(arrived) ? new Date(arrived).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}) : '—';
-      const action = a.status === 'تم تسجيل الوصول' && state.next
-        ? button(state.action, 'reception-queue-next', 'secondary small', receptionIdAttr(a)) : '';
-      return receptionRow('<bdi>' + esc(a.queueNumber || '—') + '</bdi> · ' + esc(receptionPerson(a.patient)?.name || a.patient),
-        esc(a.doctor + ' · ' + receptionClinic(a) + ' · الوصول ' + time + wait), badge(state.label, 'teal') + action);
-    })));
-}
-
-function receptionSchedulePage() {
-  const date = receptionScheduleDate || receptionToday();
-  return receptionPageHead('reception-schedule', 'مواعيد عمل الأطباء والعيادات والأوقات المتاحة للحجز.') +
-    receptionCard('جدول الأطباء', '<div class="reception-search">' + field('تاريخ الجدول','reception-schedule-date',date,'date','id="reception-schedule-date"') + '</div>' +
-      receptionRows(Object.entries(bookingDirectory()).map(([name,d]) => {
-        const count = db.appointments.filter(a => a.doctor === name && a.date === date && a.status !== 'ملغي').length;
-        const hours = availableBookingTimes(name,null,date);
-        const schedule = d.days.map(day => bookingDayNames[day]).join('، ');
-        const detail = esc([d.department, d.clinic, d.location, schedule].join(' · ')) +
-          ' · <bdi>' + esc(d.hours.length ? d.hours[0] + '–' + d.hours.at(-1) : '—') + '</bdi>';
-        const availability = d.active === false ? 'الحجز موقوف' :
-          hours.length ? 'متاح: ' + hours.join('، ') : 'لا توجد أوقات متاحة';
-        return receptionRow(esc(name), detail + '<small><bdi>' + esc(availability) + '</bdi></small>',
-          badge(count + ' حجز', count ? 'teal' : 'gray'));
-      })));
-}
-
-function receptionReportsPage() {
-  const date = receptionReportDate || receptionToday();
-  const {metrics, appointments} = receptionStats(date);
-  const clinics = new Map();
-  for (const a of appointments) {
-    const clinic = receptionClinic(a);
-    if (!clinics.has(clinic)) clinics.set(clinic,{total:0,completed:0,cancelled:0});
-    const stats = clinics.get(clinic);
-    stats.total++;
-    if (a.status === 'مكتمل') stats.completed++;
-    if (a.status === 'ملغي') stats.cancelled++;
-  }
-  return receptionPageHead('reception-reports', 'ملخص الحجوزات والانتظار حسب التاريخ والعيادة.') +
-    '<div class="reception-search">' + field('تاريخ التقرير','reception-report-date',date,'date','id="reception-report-date"') + '</div>' +
-    receptionMetrics(metrics) + receptionCard('الحجوزات حسب العيادة', receptionRows([...clinics].map(([name,stats]) =>
-      receptionRow(esc(name), stats.completed + ' كشف مكتمل · ' + stats.cancelled + ' ملغى', badge(stats.total + ' حجز','teal')))));
-}
-
-function receptionPatientDetails(id) {
-  const p = receptionPerson(id);
-  if (!p) return;
-  const appointments = db.appointments.filter(a => a.patient === id).sort(receptionBookingOrder);
-  const visits = db.visits.filter(v => v.patient === id && v.approved).sort((a,b) => healthArchiveDate(b.date) - healthArchiveDate(a.date));
-  const completed = appointments.filter(a => a.status === 'مكتمل').reverse();
-  const rows = [['رقم الملف', p.id], ['الهاتف', p.phone], ['تاريخ الميلاد', receptionDate(p.birthDate)],
-    ['حالة الملف', p.status], ['الطبيب', p.doctor], ['آخر زيارة', receptionDate(visits[0]?.date || completed[0]?.date)]];
-  modal('الملف الإداري · ' + esc(p.name),
-    '<dl class="reception-details">' + rows.map(([label,value]) => '<div><dt>' + label + '</dt><dd><bdi>' + esc(value || '—') + '</bdi></dd></div>').join('') +
-    '</dl><h3>سجل المواعيد والزيارات</h3>' + receptionRows([...appointments].reverse().map(a =>
-      receptionRow(esc(a.doctor), esc(receptionDate(a.date) + ' · ' + a.time + ' · ' + receptionClinic(a)), badge(a.status,'teal')))
-      .concat(visits.filter(v => !appointments.some(a => a.id === v.appointmentId)).map(v =>
-        receptionRow('زيارة معتمدة', esc(receptionDate(v.date)))))),
-    button('حجز موعد للمريض', 'reception-book-person', 'primary', receptionIdAttr(p)) +
-    button('بطاقة المريض', 'reception-card', 'secondary', receptionIdAttr(p)) + button('إغلاق', 'close', 'secondary'));
+        link('فتح الملف','reception-file/'+encodeURIComponent(p.id),'secondary small')))));
 }
 
 function receptionPatientCard(id) {
@@ -254,6 +148,11 @@ function registerReceptionPatient() {
     query = id;
     log('تسجيل مريض جديد',id);
     closeModal();
+    if (role === 'admin') {
+      location.hash = 'admin-patient/' + id;
+      toast('تم إنشاء الملف ' + id + '.');
+      return;
+    }
     if (location.hash === '#patients') render();
     else location.hash = 'patients';
     receptionPatientCard(id);
@@ -290,11 +189,18 @@ function advanceReceptionQueue(id) {
     const p = receptionPerson(a.patient);
     if (p) p.status = 'قيد الزيارة';
   }
+  if (state.next === 'completed') {
+    a.status = 'مكتمل';
+    a.completedAt = new Date().toISOString();
+    const p = receptionPerson(a.patient);
+    if (p) p.status = 'مكتملة';
+  }
   log(state.action,a.id);
   render();
 }
 
 function bindReceptionPage() {
+  bindReceptionScreens();
   $('#reception-booking-search')?.addEventListener('input',event => {
     const position = event.target.selectionStart;
     receptionBookingQuery = event.target.value;
@@ -307,10 +213,5 @@ function bindReceptionPage() {
     receptionScheduleDate = event.target.value;
     render();
     $('#reception-schedule-date')?.focus();
-  });
-  $('#reception-report-date')?.addEventListener('change',event => {
-    receptionReportDate = event.target.value;
-    render();
-    $('#reception-report-date')?.focus();
   });
 }

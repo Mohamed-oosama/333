@@ -214,10 +214,11 @@ const navs = [
 const allowed = {
   doctor: ['dashboard', 'consultations', 'patients', 'record', 'encounter', 'appointments', 'ai', 'model', 'documents', 'doctor-reports', 'settings'],
   radiologist: ['documents'],
-  reception: ['dashboard', 'patients', 'appointments', 'reception-checkin', 'queue', 'reception-schedule', 'reception-reports', 'settings'],
+  reception: ['dashboard', 'patients', 'appointments', 'reception-checkin', 'queue', 'reception-schedule', 'reception-reports', 'reception-file', 'reception-billing', 'reception-admissions', 'settings'],
   patient: ['portal', 'appointments', 'patient-doctors', 'patient-reports', 'patient-attachments', 'patient-profile'],
   admin: ['dashboard', 'admin-facilities', 'manage-doctors', 'admin-staff', 'admin-patients', 'admin-bookings',
-    'admin-inventory', 'admin-diagnostics', 'admin-models', 'admin-reports', 'manage-reception', 'audit', 'settings']
+    'admin-inventory', 'admin-diagnostics', 'admin-models', 'admin-reports', 'manage-reception', 'audit', 'settings',
+    'admin-archive', 'admin-billing', 'admin-patient', 'admin-doctor']
 };
 
 const patient = () => role === 'doctor' ? doctorPatients().find(p => p.id === selected) || doctorPatients()[0] :
@@ -909,7 +910,7 @@ function firstBookingDay(doctor, patientId) {
   return '';
 }
 
-function book(appointmentId,preferredDoctor,preferredPatient) {
+function book(appointmentId,preferredDoctor,preferredPatient,preferredSlot) {
   const original = appointmentId ? db.appointments.find(a => a.id === appointmentId &&
     (role === 'reception' || a.patient === demoSession?.patientId)) : null;
   const patientId = role === 'patient' ? demoSession?.patientId : original?.patient || preferredPatient || selected;
@@ -922,7 +923,7 @@ function book(appointmentId,preferredDoctor,preferredPatient) {
     (Object.hasOwn(directory,preferredDoctor) && directory[preferredDoctor].active !== false ? preferredDoctor :
       Object.keys(directory).find(name => directory[name].active !== false));
   if (!selectedDoctor) { toast('لا يوجد أطباء متاحون للحجز حاليًا.'); return; }
-  const initialDate = original?.date || firstBookingDay(selectedDoctor,patientId);
+  const initialDate = original?.date || preferredSlot?.date || firstBookingDay(selectedDoctor,patientId);
   const types = original ? [...new Set([original.type,...consultationTypes].filter(Boolean))] : consultationTypes;
   modal(original ? 'تعديل الحجز' : 'حجز موعد جديد بالعيادة', `
     <form id="book-form" class="form-grid">
@@ -975,10 +976,10 @@ function book(appointmentId,preferredDoctor,preferredPatient) {
     submit.disabled = !hours.length && !keepCurrent;
     error.textContent = hours.length || keepCurrent ? '' : 'اختار يوم تاني من أيام عيادة الطبيب.';
   }
-  refreshTimes();
+  refreshTimes(preferredSlot?.time);
   form.addEventListener('change', event => {
     if (event.target === department) doctor.innerHTML = bookingDoctorOptions(department.value,doctor.value,original?.doctor);
-    if (event.target === department || event.target === doctor || event.target.name === 'patient') {
+    if (event.target === department || event.target === doctor || (event.target.name === 'patient' && !preferredSlot)) {
       date.value = firstBookingDay(doctor.value,targetPatient());
     }
     if (['department','doctor','patient','date'].includes(event.target.name)) refreshTimes();
@@ -1068,8 +1069,9 @@ document.addEventListener('click', e => {
   if (a === 'admin-edit-employee' && el.dataset.id) adminEditEmployee(el.dataset.id);
   if (a === 'admin-add-stock') adminEditStock();
   if (a === 'admin-edit-stock' && el.dataset.id) adminEditStock(el.dataset.id);
-  if (a === 'admin-export-csv') exportAdminReport();
   if (a === 'admin-print-report' && $('.admin-printable')) window.print();
+  if (role === 'admin' && a === 'new-patient') { registerReceptionPatient(); return; }
+  if (a === 'admin-book-patient') book(null, undefined, el.dataset.id);
   if (a === 'add-directory-doctor') editHospitalDoctor();
   if (a === 'edit-directory-doctor' && el.dataset.id) editHospitalDoctor(el.dataset.id);
   if (a === 'book') book();
@@ -1115,10 +1117,12 @@ document.addEventListener('click', e => {
 
   if (role === 'reception') {
     if (a === 'new-patient') { registerReceptionPatient(); return; }
-    if (a === 'reception-person') receptionPatientDetails(el.dataset.id);
     if (a === 'reception-card') receptionPatientCard(el.dataset.id);
     if (a === 'reception-book-person') { closeModal(); book(null,null,el.dataset.id); }
-    if (a === 'reception-print' && $('.reception-print-card')) window.print();
+    if (a === 'reception-print' && $('.reception-print-card, .reception-printable')) window.print();
+    if (a === 'reception-book-slot' && availableBookingTimes(el.dataset.doctor,null,el.dataset.date).includes(el.dataset.time)) {
+      book(null,el.dataset.doctor,undefined,{date:el.dataset.date,time:el.dataset.time});
+    }
     if (a === 'reception-verify') verifyReceptionArrival(el.dataset.id);
     if (a === 'reception-queue-next') advanceReceptionQueue(el.dataset.id);
   }

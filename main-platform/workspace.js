@@ -18,34 +18,74 @@ const publicPortals = [
   {id:'admin', title:'إدارة المستشفى', icon:'shield', description:'مراجعة سجل النشاط وإعدادات مساحة الإدارة.'}
 ];
 
-function portalNavigation(current = '') {
-  return publicPortals.map(({id,title}) =>
-    `<a href="#login/${id}" ${current === id ? 'aria-current="page"' : ''}>${title}</a>`).join('');
+function portalNavigation(current = '', showIcons = false) {
+  return publicPortals.map(({id,title,icon:glyph}) =>
+    `<a href="#login/${id}" ${current === id ? 'aria-current="page"' : ''}>${showIcons ? icon(id === 'reception' ? 'file' : glyph) : ''}<span>${title}</span></a>`).join('');
 }
 
 function hospitalHome() {
   const hospital = hospitalProfile();
+  const name = esc(hospital.name);
+  const steps = [
+    ['ادخل إلى بوابتك','ملفك ومواعيدك مرتبطان بحسابك.'],
+    ['اختر موعدك','حدد الطبيب والتاريخ والوقت.'],
+    ['تابع زيارتك','راجع الحجز وتعليمات المتابعة.']
+  ];
+  const portalLabels = {patient:'للمرضى',doctor:'للأطباء',reception:'لفريق الاستقبال',admin:'للإدارة'};
   document.body.dataset.surface='hospital';
-  document.title=hospital.name + ' | المستشفى والرعاية المتصلة';
+  document.title=hospital.name;
   $('#modal-root').innerHTML='';
-  $('#app').innerHTML=`<div class="hospital-home"><header class="hospital-public-header"><a class="hospital-brand" href="#home"><img class="brand-logo" src="./assets/mnu-university-logo.jpg" alt="شعار جامعة المنصورة الجديدة" /><span><strong>${esc(hospitalProfile().name)}</strong><small>المستشفى والرعاية المتصلة</small></span></a><nav aria-label="تنقل المستشفى">${portalNavigation()}</nav><button class="button primary" data-action="public-book">${icon('calendar')} احجز موعدًا</button></header>
-    <main class="hospital-home-main"><div class="hospital-welcome"><span class="section-kicker">مرحبًا بك في ${esc(hospital.name)}</span><h1>رعاية تبدأ بموعد، وتستمر معك.</h1><p>احجز زيارتك، تابع مواعيدك، وارجع لتعليمات طبيبك من مكان واحد.</p>${hospital.address || hospital.phone ? `<div class="hospital-contact">${hospital.address ? `<span>${esc(hospital.address)}</span>` : ''}${hospital.phone ? `<span>التواصل <bdi>${esc(hospital.phone)}</bdi></span>` : ''}</div>` : ''}</div>
-      <section class="hospital-portals" aria-labelledby="hospital-portals-title">
-        <h2 id="hospital-portals-title">بوابات المستشفى</h2>
-        <div class="hospital-portal-grid">${publicPortals.map(({id,title,icon:glyph,description}) =>
-          `<a href="#login/${id}" class="hospital-portal-card"><span class="hospital-portal-icon">${icon(glyph)}</span>
-            <span><strong>${title}</strong><small>${description}</small></span>${icon('arrow')}</a>`).join('')}</div>
+  $('#app').innerHTML=`<div class="hospital-landing">
+    <header class="landing-header">
+      <a class="landing-brand" href="#home"><img class="brand-logo" src="./assets/mnu-university-logo.jpg" alt="شعار جامعة المنصورة الجديدة">
+        <strong>${name}</strong></a>
+      <nav class="landing-nav" aria-label="تنقل المستشفى">
+        <a href="#home" aria-current="page">${icon('grid')} الرئيسية</a>
+        ${publicPortals.map(({id,title,icon:glyph})=>`<a href="#login/${id}">${icon(glyph)} ${title}</a>`).join('')}
+      </nav>
+    </header>
+    <main class="landing-main">
+      <div class="landing-hero">
+        <section class="landing-intro" aria-labelledby="landing-title">
+          <p class="landing-kicker">مرحبًا بك في ${name}</p>
+          <h1 id="landing-title">رعاية تبدأ <span>بموعد،</span><br>وتستمر معك.</h1>
+          <p class="landing-lead">احجز زيارتك، تابع مواعيدك، وراجع تعليمات طبيبك من مكان واحد.</p>
+          <div class="landing-actions">
+            ${button('احجز موعدك الآن <span class="landing-arrow">'+icon('arrow')+'</span>','public-book','landing-gold')}
+            ${link(icon('calendar')+' لديك حجز؟ تابع مواعيدك',demoSession?.role==='patient'?'appointments':'login/patient','landing-outline')}
+          </div>
+          <p class="landing-hint">اختر بوابتك حسب دورك من القائمة بالأسفل.</p>
+          ${hospital.address || hospital.phone ? `<p class="landing-contact">${[hospital.address,hospital.phone].filter(Boolean).map(value=>`<bdi>${esc(value)}</bdi>`).join(' · ')}</p>` : ''}
+        </section>
+        <section class="landing-guide" aria-labelledby="landing-guide-title">
+          <p class="landing-kicker">${icon('calendar')} زيارتك القادمة</p>
+          <h2 id="landing-guide-title">خطوتك الأولى للرعاية</h2>
+          <p>اختر الطبيب والوقت المناسب من المواعيد المتاحة في بوابتك.</p>
+          <ol>${steps.map(([title,description],index)=>`<li>
+            <span class="landing-step-number" aria-hidden="true">0${index+1}</span>
+            <div><strong>${title}</strong><small>${description}</small></div>
+          </li>`).join('')}</ol>
+        </section>
+      </div>
+      <section class="landing-portals" aria-labelledby="landing-portals-title">
+        <h2 id="landing-portals-title">بوابات المستشفى</h2>
+        <p>اختر البوابة المناسبة لدورك للدخول إلى مساحتك.</p>
+        <div class="landing-portal-grid">${publicPortals.map(({id,title,icon:glyph,description})=>`
+          <article class="landing-portal">
+            <div class="landing-portal-meta"><span class="landing-portal-icon">${icon(glyph)}</span><span class="landing-portal-role">${portalLabels[id]}</span></div>
+            <h3>${title}</h3><p>${description}</p>
+            <a class="button landing-portal-link" href="#login/${id}" aria-label="ادخل البوابة · ${title}">ادخل البوابة <span class="landing-arrow">${icon('arrow')}</span></a>
+          </article>`).join('')}</div>
       </section>
-      <div class="hospital-entry-grid"><section class="hospital-booking-intro"><span class="section-kicker">${icon('calendar')} زيارتك القادمة</span><h2>خطوتك الأولى للرعاية</h2><p>اختر الطبيب والوقت المناسب من المواعيد المتاحة في بوابتك.</p><ol><li><span>01</span><div><strong>ادخل إلى بوابتك</strong><small>ملفك ومواعيدك مرتبطان بحسابك.</small></div></li><li><span>02</span><div><strong>اختر موعدك</strong><small>حدد الطبيب والتاريخ والوقت.</small></div></li><li><span>03</span><div><strong>تابع زيارتك</strong><small>راجع الحجز وتعليمات المتابعة.</small></div></li></ol><button class="button primary" data-action="public-book">احجز موعدًا الآن ${icon('arrow')}</button><a class="text-link" href="#login/patient">لديك حجز بالفعل؟ تابع مواعيدك</a></section>
-      <section class="hospital-clinic"><div class="panel-title"><h2>عيادة أمراض الصدر</h2>${icon('lung')}</div><div class="clinic-description"><h3>ملف واحد لكل خطوة في المتابعة</h3><p>زيارات وفحوصات وتعليمات متابعة في مسار رعاية واضح.</p></div><div class="clinic-doctor">${doctorPhoto()}<div><strong>د. سارة أحمد</strong><span>طبيب أمراض الصدر · حساب العرض</span></div></div><div class="clinic-services">${[['pulse','تقييم الأعراض والمتابعة'],['scan','مراجعة الأشعة والفحوصات'],['file','تعليمات الطبيب بعد الزيارة']].map(([i,t])=>`<div>${icon(i)}<span>${t}</span></div>`).join('')}</div><div class="doctor-entry"><div><strong>مساحة الأطباء</strong><p>المرضى، الزيارات، ومراجعة النماذج السبعة.</p></div><a class="button secondary" href="#login/doctor">دخول الطبيب ${icon('arrow')}</a></div></section></div>
-      <div class="hospital-service-grid">${[['calendar','مواعيدك تحت إيدك','الحجز، عرض التفاصيل والإلغاء من بوابتك.'],['shield','متابعة تخصّك','تعليمات يراجعها الطبيب ويشاركها معك.'],['brain','7 نماذج لدعم الطبيب','الأشعة والأنسجة والتقارير والمعمل وأصوات التنفس والتقرير الموحد.']].map(([i,t,d])=>`<article>${icon(i)}<div><h3>${t}</h3><p>${d}</p></div></article>`).join('')}</div>
-    </main><footer class="hospital-public-footer"><strong>MNU 333</strong><span>نسخة تفاعلية تجريبية · بيانات مصطنعة · خدمات النماذج غير متصلة</span></footer></div>`;
+    </main>
+    <footer class="landing-footer"><strong>${name}</strong><span>نسخة تفاعلية تجريبية · بيانات مصطنعة · خدمات النماذج غير متصلة</span></footer>
+  </div>`;
 }
 
 function clinicalShell() {
   const personal = role === 'patient';
   if (personal) { patientShell(); return; }
-  const items = personal
+  const items = role === 'admin' ? adminNavGroups.flatMap(([,links])=>links) : role === 'reception' ? receptionNavigation : personal
     ? [['portal','grid','الرئيسية'],['appointments','calendar','مواعيدي'],['patient-reports','file','تعليمات الطبيب'],['patient-profile','user','بياناتي']]
     : navs.filter(n=>allowed[role].includes(n[0])).map(([r,i,label])=>[r,i,(role==='reception'&&receptionTitles[r])||(role==='doctor'&&doctorTitles[r])||(role==='admin'&&adminTitles[r])||({dashboard:'لوحة العمل',consultations:'الكشف',patients:'المرضى',appointments:'المواعيد',queue:'الاستقبال والفرز',ai:'النماذج السبعة',documents:role==='radiologist'?'مساحة الأشعة':'الفحوصات والمستندات',audit:'سجل النشاط',settings:'الإعدادات','manage-doctors':'إدارة الأطباء','manage-reception':'إدارة الاستقبال','admin-bookings':'متابعة الحجوزات'})[r]||label]);
   const person = personal ? patient() : null;
@@ -54,23 +94,23 @@ function clinicalShell() {
   document.body.dataset.surface = personal ? 'patient' : 'clinical';
   $('#app').innerHTML = `<div class="app-shell hybrid-shell clinical-shell ${sidebarCollapsed?'side-collapsed':''}" data-role="${role}">
     <aside id="sidebar" class="clinical-sidebar" aria-label="القائمة الرئيسية">
-      <a class="hospital-brand" href="#${home}"><img class="brand-logo" src="./assets/mnu-university-logo.jpg" alt="شعار جامعة المنصورة الجديدة" /><span class="side-label"><strong>${esc(hospitalProfile().name)}</strong><small>المستشفى والرعاية المتصلة</small></span></a>
-      <div class="side-section side-label">${personal?'بوابة المريض':role==='reception'?'بوابة الاستقبال':'مساحة العمل'}</div>
-      <nav class="clinical-nav">${items.map(([r,i,t])=>`<a href="#${r}" data-nav="${r}" title="${t}">${icon(i)}<span class="side-label">${t}</span>${r==='ai'?'<b class="nav-count side-label">7</b>':''}</a>`).join('')}</nav>
+      <a class="hospital-brand" href="#${home}"><img class="brand-logo" src="./assets/mnu-university-logo.jpg" alt="شعار جامعة المنصورة الجديدة" /><span class="side-label"><strong>${esc(hospitalProfile().name)}</strong>${['admin','reception'].includes(role)?'':'<small>المستشفى والرعاية المتصلة</small>'}</span></a>
+      ${role === 'admin' ? adminNavigation() : `<div class="side-section side-label">${role==='reception'?'بوابة الاستقبال':'مساحة العمل'}</div>
+      <nav class="clinical-nav">${items.map(([r,i,t])=>`<a href="#${r}" data-nav="${r}" title="${t}">${icon(i)}<span class="side-label">${t}</span>${r==='ai'?'<b class="nav-count side-label">7</b>':''}</a>`).join('')}</nav>`}
       <div class="sidebar-bottom"><div class="sidebar-profile">${role==='admin'?icon('shield'):role==='reception'?icon('user'):personal?personAvatar(person):doctorPhoto()}<div class="side-label"><strong>${esc(name)}</strong><small>${role==='radiologist'?'قسم الأشعة':personal?'ملفك الصحي':role==='admin'?'إدارة المستشفى':role==='reception'?'فريق الاستقبال':'عيادة أمراض الصدر'}</small></div></div>
-        <button class="sidebar-collapse" data-action="collapse-sidebar" aria-label="تصغير القائمة" aria-expanded="${!sidebarCollapsed}">${icon('chevron')}<span class="side-label">تصغير القائمة</span></button>
+        ${role==='reception'?'<a class="reception-settings" href="#settings">الإعدادات</a>':`<button class="sidebar-collapse" data-action="collapse-sidebar" aria-label="تصغير القائمة" aria-expanded="${!sidebarCollapsed}">${icon('chevron')}<span class="side-label">تصغير القائمة</span></button>`}
         <button class="sidebar-exit" data-action="logout">${icon('logout')}<span class="side-label">تسجيل الخروج</span></button>
       </div>
     </aside>
     <button class="sidebar-scrim" data-action="toggle-menu" aria-label="إغلاق القائمة"></button>
     <div class="workspace clinical-workspace">
       <header class="clinical-topbar"><div class="topbar-heading"><button class="icon-btn menu-trigger" data-action="toggle-menu" aria-label="القائمة" aria-controls="sidebar" aria-expanded="false">${icon('menu')}</button><div><h1 id="workspace-title">${role==='radiologist'?'مساحة الأشعة':'مساحة الطبيب'}</h1><p id="workspace-subtitle">${dateLabel}</p></div></div>
-        ${['radiologist','admin'].includes(role)?'':`<form id="global-search" class="global-search">${icon('search')}<input aria-label="بحث عام عن مريض" placeholder="ابحث بالاسم، رقم الملف أو الهاتف" value=""><kbd>Ctrl K</kbd></form>`}
+        ${role==='admin'?adminSearchBar():role==='radiologist'?'':`<form id="global-search" class="global-search">${icon('search')}<input aria-label="بحث عام عن مريض" placeholder="ابحث بالاسم، رقم الملف أو الهاتف" value=""><kbd>Ctrl K</kbd></form>`}
         <div class="topbar-tools"><span class="locale-label">العربية</span><button class="icon-btn notification-trigger" data-action="workspace-notifications" aria-label="الإشعارات" aria-expanded="false">${icon('bell')}${role!=='reception'&&!personal&&db.audit.length?'<span class="notification-dot"></span>':''}</button><div class="topbar-profile">${role==='admin'?icon('shield'):role==='reception'?icon('user'):personal?personAvatar(person):doctorPhoto()}<div><strong>${esc(name)}</strong><small>${role==='radiologist'?'قسم الأشعة':personal?'بوابة المريض':role==='admin'?'إدارة المستشفى':role==='reception'?'فريق الاستقبال':'طبيب أمراض الصدر'}</small></div></div></div>
       </header>
       <main id="main" tabindex="-1"></main>
       <footer class="app-footer"><span>MNU 333 · الرعاية تبدأ بمعلومة واضحة</span><span>نسخة تجريبية · بيانات مصطنعة · النماذج غير متصلة</span></footer>
-      <nav class="mobile-bottom" aria-label="التنقل السريع">${(role==='admin'?items.filter(i=>['dashboard','admin-facilities','admin-bookings','admin-reports'].includes(i[0])):role==='radiologist'?items:items.filter(i=>(role==='reception'?['dashboard','patients','appointments','queue']:['dashboard','patients','appointments','ai']).includes(i[0]))).slice(0,4).map(([r,i,t])=>`<a href="#${r}" data-nav="${r}">${icon(i)}<span>${t}</span></a>`).join('')}</nav>
+      <nav class="mobile-bottom" aria-label="التنقل السريع">${(role==='admin'?items.filter(i=>['dashboard','admin-facilities','admin-bookings','admin-reports'].includes(i[0])):role==='radiologist'||role==='reception'?items:items.filter(i=>['dashboard','patients','appointments','ai'].includes(i[0]))).slice(0,4).map(([r,i,t])=>`<a href="#${r}" data-nav="${r}">${icon(i)}<span>${t}</span></a>`).join('')}</nav>
     </div>
   </div>`;
   $('#global-search')?.addEventListener('submit',e=>{e.preventDefault();query=e.target.querySelector('input').value.trim();patientFilter='';registryDoctor='';if(location.hash==='#patients')render();else location.hash='patients';});
@@ -124,7 +164,7 @@ function activityList() {
 }
 
 function clinicalDashboard() {
-  if(role==='reception')return receptionDashboard();
+  if(role==='reception')return receptionOverview();
   if(role==='admin')return adminDashboardPage();
   return doctorDashboard();
 }

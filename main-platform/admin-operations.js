@@ -1,14 +1,16 @@
 'use strict';
 
 const adminTitles = {
-  dashboard:'لوحة الإدارة', 'admin-facilities':'إدارة المستشفى', 'admin-staff':'إدارة الموظفين',
-  'admin-patients':'إدارة المرضى', 'admin-bookings':'الحجوزات والتشغيل',
-  'admin-inventory':'المخزون والصيدلية', 'admin-diagnostics':'المختبر والأشعة',
-  'admin-models':'مراقبة النماذج', 'admin-reports':'التقارير والتحليلات',
-  'manage-reception':'حسابات الاستقبال', audit:'سجل النشاط', settings:'إعدادات النظام'
+  dashboard:'لوحة الإدارة', 'admin-facilities':'المستشفى والإعدادات', 'admin-staff':'الأطباء والموظفون',
+  'manage-doctors':'الأطباء والموظفون', 'admin-doctor':'ملف الطبيب', 'admin-patient':'ملف المريض',
+  'admin-patients':'المرضى', 'admin-bookings':'الحجوزات والتشغيل',
+  'admin-inventory':'المخزون والمشتريات', 'admin-diagnostics':'المختبر والأشعة والنماذج',
+  'admin-models':'المختبر والأشعة والنماذج', 'admin-reports':'التقارير والتدقيق',
+  'admin-archive':'الأرشيف الطبي', 'admin-billing':'الفوترة والتأمين',
+  'manage-reception':'حسابات الاستقبال', audit:'التقارير والتدقيق', settings:'المستشفى والإعدادات'
 };
 
-const adminPeriods = {daily:'يومي', weekly:'أسبوعي', monthly:'شهري', yearly:'سنوي'};
+const adminPeriods = {daily:'يومي', weekly:'أسبوعي', monthly:'شهري'};
 let adminPeriod = 'daily';
 let adminPatientQuery = '';
 let adminAgeFilter = '';
@@ -18,7 +20,9 @@ const adminToday = () => bookingDateKey(new Date());
 const adminDate = value => value ? healthArchiveDateLabel(value) : '—';
 
 function adminHeading(route, desc, actions='') {
-  return pageHead(adminTitles[route],desc,actions,'إدارة المستشفى');
+  const title=adminTitles[route];
+  return `<header class="admin-page-head"><nav aria-label="مسار الصفحة"><a href="#dashboard">الرئيسية</a> / <span>${title}</span></nav>
+    <div><div><h1>${title}</h1><p>${desc}</p></div>${actions ? `<div class="admin-quick-links">${actions}</div>` : ''}</div></header>`;
 }
 
 function adminSection(title, body, action='') {
@@ -27,10 +31,10 @@ function adminSection(title, body, action='') {
 }
 
 function adminTable(headers, rows, emptyMessage='لا توجد بيانات مسجلة.') {
-  if (!rows.length) return '<p class="quiet-empty">' + emptyMessage + '</p>';
   return '<div class="table-wrap"><table class="admin-data-table"><thead><tr>' +
     headers.map(header=>'<th scope="col">'+header+'</th>').join('') + '</tr></thead><tbody>' +
-    rows.map(row=>'<tr>'+row.map(cell=>'<td>'+cell+'</td>').join('')+'</tr>').join('') + '</tbody></table></div>';
+    (rows.length ? rows.map(row=>'<tr>'+row.map(cell=>'<td>'+cell+'</td>').join('')+'</tr>').join('') :
+      '<tr><td colspan="'+headers.length+'" class="quiet-empty">'+emptyMessage+'</td></tr>') + '</tbody></table></div>';
 }
 
 function adminSelect(label, name, options, value, attrs='') {
@@ -41,13 +45,11 @@ function adminSelect(label, name, options, value, attrs='') {
 
 function adminBuckets(period, today = new Date()) {
   const end = bookingDateKey(today);
-  const count = {daily:7,weekly:8,monthly:12,yearly:5}[period];
+  const count = {daily:7,weekly:8,monthly:12}[period];
   const scheduled = db.appointments;
   const completed = db.visits.filter(v=>v.approved).map(v=>bookingDateFromVisit(v.date)).filter(Boolean);
-  const newPatients = db.patients.map(p=>p.registeredDate).filter(Boolean);
   function boundary(offset) {
     const y=today.getFullYear(), m=today.getMonth(), d=today.getDate();
-    if (period==='yearly') return new Date(y+offset,0,1);
     if (period==='monthly') return new Date(y,m+offset,1);
     return new Date(y,m,d+offset*(period==='weekly'?7:1)-(period==='weekly'?6:0));
   }
@@ -56,45 +58,21 @@ function adminBuckets(period, today = new Date()) {
     const start=bookingDateKey(boundary(offset));
     const stop=offset===0 ? end : bookingDateKey(new Date(boundary(offset+1).getTime()-1));
     const within=date=>date>=start && date<=stop;
-    const label=boundary(offset).toLocaleDateString('ar-EG',period==='yearly'?{year:'numeric'}:
-      period==='monthly'?{month:'short',year:'numeric'}:{day:'numeric',month:'short'});
+    const label=boundary(offset).toLocaleDateString('ar-EG',period==='monthly'?{month:'short',year:'numeric'}:{day:'numeric',month:'short'});
     return {start,stop,label,bookings:scheduled.filter(a=>within(a.date)).length,
-      visits:completed.filter(within).length,registered:newPatients.filter(within).length,
-      cancelled:scheduled.filter(a=>within(a.date)&&a.status==='ملغي').length};
+      visits:completed.filter(within).length};
   });
 }
 
-function adminPeriodSelect() {
-  return adminSelect('الفترة','admin-period',Object.entries(adminPeriods),adminPeriod,'id="admin-period"');
-}
-
-function adminTrend(rows) {
-  const max=Math.max(1,...rows.flatMap(row=>[row.bookings,row.visits]));
-  return '<div class="admin-chart-legend"><span>الحجوزات</span><span>الزيارات المعتمدة</span></div>'+
-    '<div class="admin-chart">'+rows.map(row=>{
-      const chartLine=(value,css,label)=>'<div class="admin-chart-line '+css+'"><span role="meter" aria-label="'+label+
-        '" aria-valuenow="'+value+'" aria-valuemin="0" aria-valuemax="'+max+'"><i style="--bar-width:'+
-        (value/max*100)+'%"></i></span><bdi>'+adminNumber(value)+'</bdi></div>';
-      return '<div class="admin-chart-row"><span>'+esc(row.label)+'</span><div>'+
-        chartLine(row.bookings,'bookings','الحجوزات')+chartLine(row.visits,'visits','الزيارات المعتمدة')+'</div></div>';
-    }).join('')+'</div>';
-}
-
-
 function adminDashboardTrend(rows) {
-  if (!rows.some(row=>row.bookings || row.visits)) {
-    return '<p class="quiet-empty">لا توجد حجوزات أو زيارات معتمدة في هذه الفترة.</p>';
-  }
-  const max=Math.max(...rows.flatMap(row=>[row.bookings,row.visits]));
-  const count=new Intl.NumberFormat('ar-EG-u-nu-latn');
-  const cell=(value,series)=>`<td><div class="admin-trend-value ${series}"><bdi>${count.format(value)}</bdi>
-    ${value ? `<span class="admin-trend-bar" aria-hidden="true"><span style="--bar-width:${value/max*100}%"></span></span>` : ''}
-    </div></td>`;
-  return `<table class="admin-trend-table" aria-label="الحجوزات والزيارات حسب الفترة">
-    <thead><tr><th scope="col">التاريخ</th><th class="bookings" scope="col">الحجوزات</th>
-    <th class="visits" scope="col">الزيارات المعتمدة</th></tr></thead>
-    <tbody>${rows.map(row=>`<tr><th scope="row">${esc(row.label)}</th>${cell(row.bookings,'bookings')}${cell(row.visits,'visits')}</tr>`).join('')}</tbody>
-  </table>`;
+  const max=Math.max(1,...rows.flatMap(row=>[row.bookings,row.visits]));
+  return `<div class="admin-chart-legend"><span>الحجوزات</span><span>الزيارات المعتمدة</span></div>
+    <div class="admin-vertical-chart" role="list" aria-label="الحجوزات والزيارات حسب الفترة">${rows.map(row=>`
+      <div role="listitem" aria-label="${esc(row.label)}: ${row.bookings} حجز، ${row.visits} زيارة معتمدة">
+        <div class="admin-chart-bars" aria-hidden="true">${[row.bookings,row.visits].map((value,index)=>`
+          <div class="${index?'visits':'bookings'} ${value?'':'zero'}" style="--value:${value/max*100}%"><span>${value}</span></div>`).join('')}</div>
+        <span class="admin-chart-date">${esc(row.label)}</span>
+      </div>`).join('')}</div>`;
 }
 
 const adminFacilities = () => db.facilities || [];
@@ -133,34 +111,35 @@ function adminDashboardPage() {
   const data=adminOperationalData();
   const doctors=Object.values(bookingDirectory());
   const doctorCount=doctors.filter(d=>d.active!==false).length;
-  const approved=db.visits.filter(v=>v.approved).length;
-  const occupancy=data.occupied+data.available ? adminNumber(100*data.occupied/(data.occupied+data.available))+'٪' : '—';
-  const wait=data.average===null?'—':adminNumber(data.average)+' د';
+  const occupancy=data.occupied+data.available ? adminNumber(100*data.occupied/(data.occupied+data.available))+'٪' : 'لا بيانات بعد';
+  const wait=data.average===null?'لا بيانات بعد':adminNumber(data.average)+' د';
   const staff=doctors.length+adminStaff().length+receptionStaff().length;
   const today=new Date();
   const dateText=today.toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const trend=adminBuckets(adminPeriod,today);
   return '<div class="admin-dashboard"><header class="admin-dashboard-head"><div><h1>لوحة الإدارة</h1><time datetime="'+
     bookingDateKey(today)+'">'+esc(dateText)+'</time></div>'+
-    link(icon('file')+' عرض التقارير','admin-reports','secondary')+'</header>'+
+    '<div class="admin-quick-links">'+link('عرض التقارير','admin-reports','secondary')+
+    button(icon('plus')+' حجز جديد','book','primary')+'</div></header>'+
     '<div class="admin-overview-metrics">'+[
-      ['المرضى المسجلون',adminNumber(db.patients.length),'users','teal','إجمالي الملفات'],
-      ['مرضى اليوم',adminNumber(data.patients),'users','teal','حجوزات غير ملغاة ووصول مسجل'],
-      ['الزيارات المعتمدة',adminNumber(approved),'check','emerald','إجمالي الزيارات'],
-      ['حجوزات اليوم',adminNumber(data.todays.length),'calendar','sky','كل الحالات'],
-      ['أطباء يقبلون الحجز',adminNumber(doctorCount),'doctor','teal','دليل الحجز'],
-      ['الموظفون المسجلون',adminNumber(staff),'users','teal','الأطباء ودليل الموظفين والاستقبال'],
-      ['إشغال الأسرة',occupancy,'grid','amber',data.occupied+data.available ? 'مشغولة '+adminNumber(data.occupied)+' · متاحة '+adminNumber(data.available) : 'أضف الأسرة من إدارة المستشفى'],
-      ['متوسط الانتظار',wait,'clock','amber','من تسجيل الوصول إلى النداء']
+      ['حجوزات اليوم',adminNumber(data.todays.length),'calendar','amber','كل الحالات'],
+      ['المرضى المسجلون',adminNumber(db.patients.length),'users','teal','إجمالي الملفات الطبية'],
+      ['أطباء يقبلون الحجز',adminNumber(doctorCount),'doctor','teal','متاحون في دليل الحجز'],
+      ['الموظفون المسجلون',adminNumber(staff),'users','teal','الأطباء والموظفون والاستقبال']
     ].map(args=>metric(...args)).join('')+'</div>'+
-    '<div class="admin-dashboard-columns">'+adminSection('الحجوزات والزيارات',adminDashboardTrend(trend),adminPeriodSelect())+
+    '<div class="admin-dashboard-columns">'+adminSection('الحجوزات والزيارات',adminDashboardTrend(trend),
+      '<div class="admin-tabs admin-chart-period" aria-label="فترة الرسم">'+Object.entries(adminPeriods).map(([key,label])=>
+        `<button type="button" data-chart-period="${key}" aria-pressed="${adminPeriod===key}">${label}</button>`).join('')+'</div>')+
     '<div class="admin-dashboard-side">'+adminSection('تنبيهات التشغيل',adminAlerts(
       '<p class="admin-alert-clear">'+icon('check')+' لا توجد تنبيهات تشغيلية حاليًا.</p>'))+
-    adminSection('روابط الإدارة','<div class="admin-dashboard-links">'+[
-      ['grid','هيكل المستشفى','admin-facilities'],['doctor','إدارة الأطباء','manage-doctors'],
-      ['calendar','الحجوزات والتشغيل','admin-bookings']
-    ].map(([glyph,title,route])=>link(icon(glyph)+' <span>'+title+'</span> '+icon('chevron'),route,'secondary')).join('')+
-    '</div>')+'</div></div></div>';
+    adminSection('إجراءات سريعة','<div class="admin-dashboard-links">'+
+      button(icon('plus')+' تسجيل مريض جديد','new-patient','secondary')+
+      link(icon('plus')+' إضافة طبيب','admin-doctor/new','secondary')+
+      button(icon('plus')+' إضافة موظف','admin-add-employee','secondary')+
+      link('إدارة جداول الحجز','admin-facilities/hours','secondary')+
+    '</div>')+'</div></div>'+adminSection('جاهزية المستشفى',adminSummary([
+      ['متوسط الانتظار',wait,'من تسجيل الوصول إلى النداء'],['إشغال الأسرّة',occupancy,'حسب حالة الأسرّة المسجلة']
+    ]))+'</div>';
 }
 
 const adminFacilityTypes = {
@@ -168,7 +147,7 @@ const adminFacilityTypes = {
   floor:{label:'طابق',parent:'building'},department:{label:'قسم',parent:'floor'},
   clinic:{label:'عيادة',parent:'department'},room:{label:'غرفة',parent:'department'},bed:{label:'سرير',parent:'room'}
 };
-const adminBedStates={available:'متاح',occupied:'مشغول',maintenance:'صيانة'};
+const adminBedStates={available:'متاح',occupied:'مشغول',reserved:'محجوز',maintenance:'صيانة'};
 
 function adminFacilityPath(item, rows = adminFacilities()) {
   const path=[];
@@ -198,15 +177,15 @@ function adminFacilitySummary(type, parent) {
 
 function adminFacilitiesPage() {
   const profile=hospitalProfile();
-  return adminHeading('admin-facilities','الفروع والأقسام والعيادات والسعة المسجلة. حالة السرير تُحدَّث يدويًا.',
-    button(icon('plus')+' إضافة موقع أو سرير','admin-add-facility','primary'))+
-    adminSection('بيانات المستشفى','<dl class="patient-facts"><div><dt>الاسم</dt><dd>'+esc(profile.name)+
+  return adminSection('بيانات المستشفى','<dl class="patient-facts admin-facility-facts"><div><dt>الاسم</dt><dd>'+esc(profile.name)+
       '</dd></div><div><dt>العنوان</dt><dd>'+esc(profile.address || '—')+'</dd></div><div><dt>التواصل</dt><dd><bdi>'+
       esc(profile.phone || '—')+'</bdi></dd></div></dl>',button('تعديل البيانات','edit-hospital','secondary small'))+
-    adminSection('هيكل المستشفى',adminTable(['النوع','الموقع','السعة أو الحالة','الإجراء'],
+    adminSection('الهيكل','<div class="admin-quick-links">'+Object.entries(adminFacilityTypes).map(([type,{label}])=>
+      badge(label+' · '+adminNumber(adminFacilities().filter(item=>item.type===type).length),'gray')).join('')+'</div>'+
+      adminTable(['النوع','الموقع','السعة أو الحالة','الإجراء'],
       adminFacilities().map(item=>[adminFacilityTypes[item.type].label,esc(adminFacilityPath(item)),adminFacilitySummary(item.type,item),
         button('تعديل','admin-edit-facility','secondary small','data-id="'+esc(item.id)+'" aria-label="تعديل '+esc(item.name)+'"')]),
-      'ابدأ بإضافة الفرع، ثم أضف المباني والطوابق والأقسام التابعة له.'));
+      'ابدأ بإضافة الفرع، ثم أضف المباني والطوابق والأقسام التابعة له.'),button(icon('plus')+' إضافة موقع أو سرير','admin-add-facility','primary'));
 }
 
 function adminEditFacility(id='') {
@@ -242,6 +221,11 @@ function adminEditFacility(id='') {
     const rows=adminFacilities();
     if (!name || (adminFacilityTypes[type()].parent && !parents().some(r=>r.id===parentId)) ||
       (type()==='bed' && !Object.hasOwn(adminBedStates,state))) { error.textContent='راجع الاسم والموقع والحالة.';return; }
+    if (old?.type==='bed' && (db.receptionStays||[]).some(stay=>stay.bed===id&&!stay.discharge) &&
+      (state!=='occupied'||parentId!==old.parentId)) {
+      error.textContent='السرير مرتبط بإقامة نشطة. استخدم التحويل أو الخروج الإداري من بوابة الاستقبال.';
+      return;
+    }
     if (rows.some(r=>r.id!==id && r.type===type() && r.parentId===parentId && r.name===name)) {
       error.textContent='الاسم مسجل بالفعل في الموقع ده.';return;
     }
@@ -256,13 +240,10 @@ const adminStaffRoles=['تمريض','فني','محاسب','صيدلي','إدار
 
 function adminStaffPage() {
   const staff=adminStaff();
-  return adminHeading('admin-staff','دليل الوظائف والأقسام. حسابات دخول الاستقبال تُدار من قسمها.',
-    button(icon('plus')+' إضافة موظف','admin-add-employee','primary'))+
-    adminSection('دليل الموظفين',adminTable(['الموظف','الوظيفة','القسم','الحالة','الإجراء'],staff.map(p=>[
+  return adminSection('دليل الموظفين',adminTable(['الموظف','الوظيفة','القسم','الحالة','الإجراء'],staff.map(p=>[
       esc(p.name),esc(p.job),esc(p.department),badge(p.active?'نشط':'موقوف',p.active?'teal':'gray'),
-      button('تعديل','admin-edit-employee','secondary small','data-id="'+esc(p.id)+'"')])))+
-    adminSection('الأطباء والاستقبال','<div class="admin-quick-links">'+link('إدارة الأطباء','manage-doctors','secondary')+
-      link('حسابات الاستقبال','manage-reception','secondary')+'</div>');
+      button('تعديل','admin-edit-employee','secondary small','data-id="'+esc(p.id)+'"')])),
+    button(icon('plus')+' إضافة موظف','admin-add-employee','primary'))+hospitalReceptionAdminPage();
 }
 
 function adminEditEmployee(id='') {
@@ -289,13 +270,21 @@ function adminEditEmployee(id='') {
 
 const adminInventoryKinds=['دواء','مستلزم طبي','جهاز'];
 
-function adminInventoryPage() {
-  return adminHeading('admin-inventory','الأرصدة المسجلة وحدود إعادة الطلب والصلاحية.',
-    button(icon('plus')+' إضافة صنف','admin-add-stock','primary'))+
+function adminInventoryPage(tab) {
+  const active = ['suppliers','purchases'].includes(tab) ? tab : '';
+  const items=adminInventory(), today=adminToday(), expiry=new Date();
+  expiry.setDate(expiry.getDate()+30);
+  return adminHeading('admin-inventory','الأصناف والموردون وطلبات الشراء.')+
+    adminTabs('admin-inventory',[['','الأصناف'],['suppliers','الموردون'],['purchases','طلبات الشراء']],active)+
+    (active ? adminLedgerTable(active) : adminSummary([
+      ['الأصناف',items.length,'الأصناف المسجلة'],['تحت حد الطلب',items.filter(i=>i.quantity<=i.minimum).length,'عند حد إعادة الطلب أو أقل'],
+      ['قاربت الصلاحية',items.filter(i=>i.expiry>=today && i.expiry<=bookingDateKey(expiry)).length,'خلال ٣٠ يومًا']
+    ])+
     adminSection('الأصناف',adminTable(['الصنف','النوع','الكمية','حد إعادة الطلب','الصلاحية','المورد','الإجراء'],
-      adminInventory().map(i=>[esc(i.name),esc(i.kind),adminNumber(i.quantity)+(i.quantity<=i.minimum?' '+badge('إعادة طلب','amber'):''),
+      items.map(i=>[esc(i.name),esc(i.kind),adminNumber(i.quantity)+(i.quantity<=i.minimum?' '+badge('إعادة طلب','amber'):''),
         adminNumber(i.minimum),i.expiry && i.expiry<adminToday()?badge('منتهية','amber')+' '+esc(adminDate(i.expiry)):esc(adminDate(i.expiry)),
-        esc(i.supplier||'—'),button('تعديل','admin-edit-stock','secondary small','data-id="'+esc(i.id)+'"')])));
+        esc(i.supplier||'—'),button('تعديل','admin-edit-stock','secondary small','data-id="'+esc(i.id)+'"')])),
+    button(icon('plus')+' إضافة صنف','admin-add-stock','primary')));
 }
 
 function adminEditStock(id='') {
@@ -329,7 +318,7 @@ function adminEditStock(id='') {
 
 const adminAgeBands = [[0,17],[18,39],[40,59],[60,120]];
 
-function adminPatientsPage() {
+function adminPatientsPage(tab) {
   const directory=bookingDirectory();
   const departments=[...new Set(Object.values(directory).map(d=>d.department))].sort((a,b)=>a.localeCompare(b,'ar'));
   const term=adminPatientQuery.trim().toLowerCase();
@@ -348,20 +337,24 @@ function adminPatientsPage() {
   const candidates=db.patients.filter(p=>[p.name,p.id].some(v=>String(v).toLowerCase().includes(term)) &&
     (!band || Number.isFinite(p.age) && p.age>=band[0] && p.age<=band[1]) && (!adminClinicFilter || directory[p.doctor]?.department===adminClinicFilter));
   const today=db.patients.filter(p=>p.registeredDate===adminToday()).length;
-  return adminHeading('admin-patients','البيانات الإدارية وعدد الزيارات. مشاركة رقم هاتف قد تعني أكثر من فرد في الأسرة.')+
+  const heading=adminHeading('admin-patients','ملفات المرضى والشكاوى والتقييم.')+
+    adminTabs('admin-patients',[['','الملفات · '+adminNumber(db.patients.length)],['feedback','الشكاوى والتقييم']],tab==='feedback'?'feedback':'');
+  if (tab==='feedback') return heading+adminLedgerTable('feedback');
+  return heading+
     adminSection('الملفات المسجلة · '+adminNumber(candidates.length),'<div class="admin-filters">'+
       field('البحث بالاسم أو رقم الملف','admin-patient-search',adminPatientQuery,'search','id="admin-patient-search"')+
       adminSelect('العمر','admin-patient-age',[['','كل الأعمار'],...adminAgeBands.map(([a,b])=>[String(a),adminNumber(a)+'–'+adminNumber(b)+' سنة'])],
         adminAgeFilter,'id="admin-patient-age"')+
       adminSelect('التخصص','admin-patient-specialty',[['','كل التخصصات'],...departments.map(d=>[d,d])],adminClinicFilter,'id="admin-patient-specialty"')+'</div>'+
-      adminTable(['المريض','الرقم الطبي','العمر','الطبيب المتابع','آخر زيارة','زيارات معتمدة','مراجعة الملف'],candidates.map(p=>{
+      adminTable(['المريض','رقم الملف','العمر','الطبيب المتابع','الزيارات','آخر زيارة','الإجراء'],candidates.map(p=>{
         const history=visits.get(p.id);
-        return [esc(p.name),'<bdi>'+esc(p.id)+'</bdi>',esc(p.age??'—'),esc(p.doctor||'—'),esc(adminDate(history?.date)),
-          adminNumber(history?.count||0),phones.get(receptionPhone(p.phone))>1?badge('هاتف مشترك','amber'):'—'];
+        return ['<strong>'+esc(p.name)+'</strong>'+(phones.get(receptionPhone(p.phone))>1?' '+badge('هاتف مشترك','amber'):''),
+          '<bdi>'+esc(p.id)+'</bdi>',esc(p.age??'—'),esc(p.doctor||'—'),adminNumber(history?.count||0),esc(adminDate(history?.date)),
+          link('فتح الملف','admin-patient/'+encodeURIComponent(p.id),'secondary small')];
       }), 'لا توجد ملفات مطابقة.'),badge(adminNumber(today)+' ملف جديد اليوم','teal'));
 }
 
-function adminDiagnosticsPage() {
+function adminDiagnosticsPage(tab) {
   const section=(kind,fileKind,title)=>{
     const orders=db.orders.filter(o=>o.kind===kind || (!o.kind && (kind==='أشعة'?/أشعة|x-ray|ct/i:/تحليل|مختبر|معمل/i).test(o.type)));
     const files=db.attachments.filter(a=>a.kind===fileKind);
@@ -371,36 +364,15 @@ function adminDiagnosticsPage() {
       badge(adminNumber(files.length)+' مرفق مسجل','gray')+'</div>'+
       adminTable(['حالة الطلب','العدد'],[...labels].map(([status,n])=>[esc(status),adminNumber(n)]),'لا توجد طلبات مسجلة.'));
   };
-  return adminHeading('admin-diagnostics','متابعة أعداد الطلبات والمرفقات حسب القسم.')+
-    '<div class="admin-overview-columns">'+section('مختبر','تحليل','المختبر')+section('أشعة','أشعة','الأشعة')+'</div>';
+  return adminHeading('admin-diagnostics','الطلبات والمرفقات وحالة وحدات التحليل.')+
+    adminTabs('admin-diagnostics',[['','الطلبات'],['models','مراقبة النماذج']],tab==='models'?'models':'')+
+    (tab==='models' ? adminModelsPage() : '<div class="admin-overview-columns">'+section('مختبر','تحليل','المختبر')+section('أشعة','أشعة','الأشعة')+'</div>');
 }
 
 function adminModelsPage() {
-  return adminHeading('admin-models','حالة وحدات التحليل السبعة في مشروع MNU 333.')+
-    adminSection('النماذج',adminTable(['الوحدة','المدخل','حالة الاتصال','تشغيل وإصدار'],models.map(m=>
+  return adminSection('النماذج السبعة',adminTable(['الوحدة','المدخل','حالة الاتصال','تشغيل وإصدار'],models.map(m=>
       [esc(m.name),esc(m.inputTag),badge('غير متصل','gray'),'—'])))+
     adminSection('قياسات الأداء','<p>زمن الاستجابة، الإخفاقات ومراجعة المختصين تظهر بعد ربط سجل تشغيل النماذج. جودة النتائج وتغيّر البيانات يحتاجان تقييمًا مرجعيًا معتمدًا.</p>');
-}
-
-function adminReportsPage() {
-  const rows=adminBuckets(adminPeriod);
-  return adminHeading('admin-reports','تقارير مجمعة من الحجوزات والزيارات وملفات التسجيل.',
-    button('تنزيل CSV لـ Excel','admin-export-csv','secondary')+button('طباعة / حفظ PDF','admin-print-report','primary'))+
-    '<div class="admin-printable">'+adminSection('تقرير النشاط · '+adminPeriods[adminPeriod],adminTrend(rows),adminPeriodSelect())+
-    adminSection('جدول النشاط',adminTable(['من','إلى','حجوزات','زيارات معتمدة','ملفات جديدة','ملغى'],
-      rows.map(r=>[r.start,r.stop,adminNumber(r.bookings),adminNumber(r.visits),adminNumber(r.registered),adminNumber(r.cancelled)])))+'</div>';
-}
-
-function exportAdminReport() {
-  if (!isHospitalAdmin()) return;
-  const rows=adminBuckets(adminPeriod);
-  const csv=['من,إلى,الحجوزات,الزيارات المعتمدة,الملفات الجديدة,الحجوزات الملغاة',
-    ...rows.map(r=>[r.start,r.stop,r.bookings,r.visits,r.registered,r.cancelled].join(','))].join('\r\n');
-  const url=URL.createObjectURL(new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8'}));
-  const link=document.createElement('a');
-  link.href=url;link.download='mnu333-operations-'+adminPeriod+'.csv';link.click();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
-  log('تصدير تقرير تشغيل مجمع',adminPeriod);
 }
 
 function adminClinicOperations() {
@@ -421,11 +393,12 @@ function adminClinicOperations() {
 }
 
 function bindAdminWorkspace() {
-  $('#admin-period')?.addEventListener('change',event=>{
-    const period=event.target.value;
-    if (!Object.hasOwn(adminPeriods,period)) return;
-    adminPeriod=period;render();$('#admin-period')?.focus();
-  });
+  bindAdminHub();
+  bindAdminDoctorDirectory();
+  $$('[data-chart-period]').forEach(el=>el.addEventListener('click',()=>{
+    const period=el.dataset.chartPeriod;
+    adminPeriod=period;render();$(`[data-chart-period="${period}"]`)?.focus();
+  }));
   for (const [id,update] of [
     ['admin-patient-search',value=>{adminPatientQuery=value;}],
     ['admin-patient-age',value=>{adminAgeFilter=value;}],
