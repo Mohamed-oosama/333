@@ -4,10 +4,10 @@ const receptionNavigation = [
   ['dashboard','grid','لوحة الاستقبال'],['reception-checkin','clock','مكتب الاستقبال'],
   ['patients','users','المرضى'],['appointments','calendar','الحجوزات والجداول'],
   ['reception-billing','file','الحسابات والمدفوعات'],['reception-admissions','plus','الإقامة'],
-  ['reception-reports','pulse','التقارير']
+  ['reception-reports','pulse','التقارير'],['reception-services','grid','خدمات الاستقبال']
 ];
-const receptionNavParent = {queue:'reception-checkin','reception-file':'patients','reception-schedule':'appointments'};
-const receptionStates = {'مؤكد':'amber','مكتمل':'emerald','ملغي':'rose','تم تسجيل الوصول':'sky','بانتظار التأكيد':'gray'};
+const receptionNavParent = {queue:'reception-checkin','reception-file':'patients','reception-schedule':'appointments','appointment-waitlist':'appointments'};
+const receptionStates = {'مؤكد':'amber','مكتمل':'emerald','ملغي':'rose','لم يحضر':'gray','تم تسجيل الوصول':'sky','بانتظار التأكيد':'gray'};
 const receptionMoney = value => new Intl.NumberFormat('ar-EG',{maximumFractionDigits:2}).format(value)+' ج.م';
 const receptionGuard = () => role==='reception' && demoSession?.role==='reception' &&
   (!demoSession.staffId || !!activeReceptionStaff(demoSession));
@@ -35,7 +35,7 @@ function receptionOverview() {
   const summary=new Map(metrics);
   const waiting=queue.filter(a=>a.status==='تم تسجيل الوصول'&&(!a.queueState||a.queueState==='waiting'));
   const clinicRows=Object.entries(bookingDirectory()).map(([name,d])=>{
-    const active=appointments.filter(a=>a.doctor===name&&a.status!=='ملغي');
+    const active=appointments.filter(a=>(a.scheduledDoctor||a.doctor)===name&&!['ملغي','لم يحضر'].includes(a.status)&&a.source!=='walk-in');
     return {name,clinic:d.clinic,count:active.length,capacity:d.hours.length,waiting:waiting.filter(a=>a.doctor===name).length};
   }).filter(row=>row.count||row.waiting).sort((a,b)=>b.count-a.count);
   const clinics=clinicRows.map(({name,clinic,count,capacity,waiting:queued})=>`<div class="reception-load">
@@ -60,18 +60,28 @@ function receptionDesk(rawPatient) {
   const term=receptionBookingQuery;
   const matches=a=>receptionSearchText(a.id)===receptionSearchText(term)||receptionMatches(receptionPerson(a.patient)||{id:a.patient},term,false);
   const queue=receptionVisitsToday();
+  const transferRows=queue.filter(matches).flatMap(a=>(a.transfers||[]).slice().reverse().map(transfer=>
+    receptionRow(esc(receptionPerson(a.patient)?.name||a.patient),
+      esc([transfer.from+' ← '+transfer.to,transfer.reason,
+        new Date(transfer.receivedAt).toLocaleString('ar-EG')].join(' · ')),badge('تم الاستلام','emerald'))));
   const arrivals=db.appointments.filter(a=>a.date===today&&['بانتظار التأكيد','مؤكد'].includes(a.status)&&matches(a)).sort(receptionBookingOrder);
   const states=Object.entries(receptionQueueStates).map(([key,{label}])=>[label,queue.filter(a=>
     (a.status==='مكتمل'?'completed':a.queueState||'waiting')===key).length]);
   const queueRows=queue.filter(matches).sort((a,b)=>Number(receptionEmergency(b.patient))-Number(receptionEmergency(a.patient))||
     (a.queueNumber||0)-(b.queueNumber||0)).map(a=>{
     const state=a.status==='مكتمل'?receptionQueueStates.completed:receptionQueueStates[a.queueState]||receptionQueueStates.waiting;
-    const minutes=Math.max(0,Math.floor(((Date.parse(a.completedAt)||Date.now())-Date.parse(a.arrivalAt))/60000));
+    const minutes=Math.max(0,Math.floor(((Date.parse(a.calledAt)||Date.parse(a.completedAt)||Date.now())-Date.parse(a.arrivalAt))/60000));
     return receptionRow(`<bdi class="reception-ticket ${receptionEmergency(a.patient)?'urgent':''}">${esc(a.queueNumber?'A'+a.queueNumber:'—')}</bdi> ${esc(receptionPerson(a.patient)?.name||a.patient)}`,
-      esc(receptionClinic(a)+' · '+a.doctor+(Number.isFinite(minutes)?' · منذ '+minutes+' د':'')),
+      esc([a.patient,receptionClinic(a),a.doctor,a.source==='walk-in'?'بدون حجز':'موعد محجوز',
+        Number.isFinite(minutes)?'وقت الانتظار '+minutes+' د':''].filter(Boolean).join(' · ')),
       badge(state.label,a.queueState==='in-consultation'?'emerald':a.queueState==='called'?'sky':'amber')+
+      (a.queueNumber?button('تذكرة الوصول','reception-ticket','secondary small',receptionIdAttr(a)):'')+
+      (receptionCanTransfer(a)?button('تحويل لعيادة','reception-transfer','secondary small',receptionIdAttr(a)):'')+
       (a.status==='تم تسجيل الوصول'&&state.next?button(state.action,'reception-queue-next','secondary small',receptionIdAttr(a)):''));
   });
+  const matchedPatients=term?db.patients.filter(person=>receptionMatches(person,term)).slice(0,8):[];
+  const walkInRows=matchedPatients.map(person=>receptionRow(esc(person.name),'<bdi>'+esc(person.id)+'</bdi>',
+    button('تسجيل بدون حجز','reception-walk-in','secondary small',receptionIdAttr(person))));
   return receptionPageHead('reception-checkin','تسجيل الوصول وقائمة الانتظار في شاشة واحدة · '+esc(receptionDate(today)),receptionActions())+
     `<label class="field reception-search"><span>بحث موحد</span><input id="reception-booking-search" class="input" type="search" placeholder="الاسم، رقم الملف، الهاتف أو رقم الحجز" value="${esc(term)}"></label>`+
     receptionMetrics(states)+'<div class="reception-grid">'+receptionCard('حجوزات اليوم بانتظار الوصول',
@@ -79,14 +89,17 @@ function receptionDesk(rawPatient) {
         esc([a.patient,receptionClinic(a),a.doctor,a.time].join(' · ')),
         a.status==='مؤكد'?button('تسجيل وصول','reception-verify','primary small',receptionIdAttr(a)):
           button('تأكيد الحجز','confirm-appointment','secondary small',receptionIdAttr(a)))))+
-      '<p class="reception-walk-in">مريض بدون حجز؟ <a href="#patients">ابحث عن ملفه</a> أو سجّل مريضًا جديدًا.</p>')+
-    receptionCard('قائمة الانتظار الحية','<p class="muted">الطوارئ أولًا، ثم حسب وقت الوصول.</p>'+receptionRows(queueRows))+'</div>';
+      '<p class="reception-walk-in">مريض بدون حجز؟ ابحث عن ملفه هنا أو سجّل مريضًا جديدًا.</p>'+
+      (walkInRows.length?receptionRows(walkInRows):''))+
+    receptionCard('قائمة الانتظار الحية','<p class="muted">الطوارئ أولًا، ثم حسب وقت الوصول.</p>'+receptionRows(queueRows))+'</div>'+
+    (transferRows.length?receptionCard('تحويلات اليوم',receptionRows(transferRows)):'');
 }
 
 function receptionBookingRow(a) {
   return receptionRow(esc(receptionPerson(a.patient)?.name||a.patient),
     esc([a.patient,receptionClinic(a),receptionDate(a.date),a.time].join(' · ')),
     receptionBadge(a.status)+(a.status==='بانتظار التأكيد'&&a.date>=receptionToday()?button('تأكيد','confirm-appointment','primary small',receptionIdAttr(a)):'')+
+    (receptionCanMarkNoShow(a)?button('تسجيل عدم الحضور','reception-no-show','secondary small',receptionIdAttr(a)):'')+
     (canEditBooking(a)?button('تعديل','edit-booking','secondary small',receptionIdAttr(a))+
       button('إلغاء','cancel-booking','secondary small',receptionIdAttr(a)):''));
 }
@@ -95,13 +108,13 @@ function receptionTimetable(section) {
   const schedule=section==='schedule';
   const date=receptionScheduleDate||receptionToday();
   const directory=bookingDirectory();
-  const bookings=db.appointments.filter(a=>a.date===date&&(!receptionDepartment||directory[a.doctor]?.department===receptionDepartment))
+  const bookings=db.appointments.filter(a=>a.date===date&&(!receptionDepartment||directory[a.scheduledDoctor||a.doctor]?.department===receptionDepartment))
     .sort(receptionBookingOrder);
   const active=Object.entries(directory).filter(([,d])=>!receptionDepartment||d.department===receptionDepartment);
   const weekday=new Date(date+'T12:00:00').getDay();
-  const doctors=active.filter(([name,d])=>(d.active!==false&&d.days.includes(weekday))||bookings.some(a=>a.doctor===name&&a.status!=='ملغي'));
+  const doctors=active.filter(([name,d])=>(d.active!==false&&d.days.includes(weekday))||bookings.some(a=>(a.scheduledDoctor||a.doctor)===name&&a.status!=='ملغي'));
   const entries=doctors.map(([name,d])=>{
-    const reserved=bookings.filter(a=>a.doctor===name&&a.status!=='ملغي');
+    const reserved=bookings.filter(a=>(a.scheduledDoctor||a.doctor)===name&&!['ملغي','لم يحضر'].includes(a.status)&&a.source!=='walk-in');
     const available=new Set(availableBookingTimes(name,null,date));
     const slots=[...new Set([...d.hours,...reserved.map(a=>a.time)])].sort().map(time=>{
       const occupied=reserved.some(a=>a.time===time);
@@ -113,7 +126,8 @@ function receptionTimetable(section) {
       <div class="reception-actions">${slots}</div>`,badge(reserved.length+' حجز','gray'));
   }).join('');
   const list=receptionCard('المواعيد المسجلة',receptionRows(bookings.map(receptionBookingRow)));
-  return receptionPageHead('appointments','تابع المواعيد واختر وقت الحجز من جدول الأطباء.',button(icon('plus')+' حجز موعد','book','primary'))+
+  return receptionPageHead('appointments','تابع المواعيد واختر وقت الحجز من جدول الأطباء.',button(icon('plus')+' حجز موعد','book','primary')+
+    link('قائمة انتظار المواعيد','appointment-waitlist','secondary'))+
     '<div class="reception-toolbar">'+adminTabs('appointments',[['','الحجوزات'],['schedule','جدول الأطباء']],schedule?'schedule':'')+
     '<div class="reception-actions">'+field('التاريخ','date',date,'date','id="reception-schedule-date"')+
     adminSelect('التخصص','department',[['','كل التخصصات'],...new Set(Object.values(directory).map(d=>d.department))].map(v=>Array.isArray(v)?v:[v,v]),
@@ -148,6 +162,7 @@ function receptionFile(id, tab) {
       <p><bdi>${esc(p.id)}</bdi> · الهاتف ${esc(p.phone||'—')} · التأمين ${esc(p.insurer||'—')}</p></div></div>
       <div class="reception-actions">${button('بطاقة المريض','reception-card','secondary',receptionIdAttr(p))}
       ${link('تسجيل وصول','reception-checkin/'+encodeURIComponent(p.id),'secondary')}
+      ${button('تسجيل بدون حجز','reception-walk-in','secondary',receptionIdAttr(p))}
       ${button(icon('plus')+' حجز موعد','reception-book-person','primary',receptionIdAttr(p))}</div></header>
     <div class="reception-grid reception-wide"><div class="reception-stack">
       ${adminTabs('reception-file/'+encodeURIComponent(p.id),[['','الزيارات'],['details','البيانات'],['bookings','الحجوزات'],['invoices','الفواتير']],active)}
@@ -172,10 +187,12 @@ const receptionPaymentMethods=['نقدي','بطاقة','تأمين'];
 function receptionBilling() {
   const invoices=adminLedgerRows('invoices');
   const due=invoices.filter(i=>adminInvoiceBalance(i)>0);
-  const today=adminLedgerRows('payments').filter(p=>p.date===receptionToday()).reduce((sum,p)=>sum+p.amount,0);
+  const today=adminLedgerRows('payments').filter(p=>p.date===receptionToday()).reduce((sum,p)=>sum+p.amount,0)-
+    deskRows('refunds').filter(p=>p.date===receptionToday()).reduce((sum,p)=>sum+p.amount,0);
   const prices=adminLedgerRows('prices');
   return receptionPageHead('reception-billing','فواتير الكشف ورسوم الخدمات وتسجيل المدفوعات.',
-    '<a class="button primary" href="#reception-billing" data-reception-focus="reception-invoice-form">+ فاتورة جديدة</a>')+
+    '<a class="button primary" href="#reception-billing" data-reception-focus="reception-invoice-form">+ فاتورة جديدة</a>'+
+    link('ورديات الخزينة','reception-services/cash','secondary'))+
     receptionMetrics([['المدفوع اليوم',receptionMoney(today)],['المبالغ المستحقة',receptionMoney(due.reduce((n,i)=>n+adminInvoiceBalance(i),0))],['فواتير غير مكتملة',due.length]])+
     '<div class="reception-grid reception-wide">'+receptionCard('فاتورة جديدة',`<form id="reception-invoice-form" class="reception-form">
       ${adminSelect('المريض','patient',[['','اختر المريض'],...db.patients.map(p=>[p.id,p.name+' · '+p.id])],'','required')}
@@ -207,7 +224,7 @@ function receptionReceipt(invoice, payment) {
 }
 
 function receptionPostPayment(invoice,amount,method) {
-  const payment={id:crypto.randomUUID(),invoice:invoice.id,amount,method,date:receptionToday()};
+  const payment={id:crypto.randomUUID(),invoice:invoice.id,amount,method,date:receptionToday(),shift:deskOpenShift()?.id||null};
   ((db.adminLedgers ||= {}).payments ||= []).push(payment);
   log('تسجيل دفعة في الاستقبال',invoice.id);
   return payment;
@@ -305,11 +322,13 @@ function receptionReportData() {
   const records=[...completed,...visits];
   const waits=appointments.map(a=>(Date.parse(a.calledAt)-Date.parse(a.arrivalAt))/60000).filter(n=>Number.isFinite(n)&&n>=0);
   const cancelled=appointments.filter(a=>a.status==='ملغي').length;
-  const past=appointments.filter(a=>a.status!=='ملغي'&&a.date<receptionToday());
-  const missed=past.filter(a=>['مؤكد','لم يحضر'].includes(a.status)&&!a.arrivalAt).length;
+  const past=appointments.filter(a=>a.source!=='walk-in'&&['لم يحضر','مكتمل','تم تسجيل الوصول'].includes(a.status));
+  const missed=past.filter(a=>a.status==='لم يحضر').length;
   const invoices=adminLedgerRows('invoices');
-  const revenues=valid?adminLedgerRows('payments').filter(p=>p.date>=start&&p.date<=end&&(!receptionReportClinic||
-    appointments.some(a=>a.id===invoices.find(i=>i.id===p.invoice)?.appointment))).reduce((n,p)=>n+p.amount,0):0;
+  const inPeriod=p=>p.date>=start&&p.date<=end&&(!receptionReportClinic||
+    appointments.some(a=>a.id===invoices.find(i=>i.id===p.invoice)?.appointment));
+  const revenues=valid?adminLedgerRows('payments').filter(inPeriod).reduce((n,p)=>n+p.amount,0)-
+    deskRows('refunds').filter(inPeriod).reduce((n,p)=>n+p.amount,0):0;
   const days=new Map();
   for (const a of [...appointments.filter(a=>a.status!=='ملغي'),...visits]) {
     if (!days.has(a.date)) days.set(a.date,new Set());

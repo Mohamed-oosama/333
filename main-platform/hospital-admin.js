@@ -1,7 +1,7 @@
 'use strict';
 
 function hospitalProfile() {
-  return {name:'MNU 333', address:'', phone:'', ...db.hospitalProfile};
+  return {name:'MNU 333', address:'', phone:'', emergencyPhone:'', onCallPhone:'', ...db.hospitalProfile};
 }
 
 function isHospitalAdmin() {
@@ -77,6 +77,8 @@ function editHospitalProfile() {
     <label class="field full"><span>اسم المستشفى</span><input class="input" name="name" value="${esc(profile.name)}" maxlength="90" required></label>
     <label class="field full"><span>العنوان</span><input class="input" name="address" value="${esc(profile.address)}" maxlength="180"></label>
     <label class="field full"><span>رقم التواصل</span><input class="input" name="phone" type="tel" dir="ltr" value="${esc(profile.phone)}" maxlength="25"></label>
+    ${field('رقم طوارئ المستشفى','emergencyPhone',profile.emergencyPhone,'tel','dir="ltr" maxlength="25"')}
+    ${field('رقم الطبيب المناوب','onCallPhone',profile.onCallPhone,'tel','dir="ltr" maxlength="25"')}
     ${adminFormFooter()}</form>`);
   $('#admin-hospital-form').addEventListener('submit', event => {
     event.preventDefault();
@@ -84,7 +86,12 @@ function editHospitalProfile() {
     const data = new FormData(event.currentTarget);
     const name = data.get('name').trim();
     if (!name) { $('#admin-form-error').textContent = 'اكتب اسم المستشفى.'; return; }
-    db.hospitalProfile = {name,address:data.get('address').trim(),phone:data.get('phone').trim()};
+    const emergencyPhone=data.get('emergencyPhone').trim();
+    const onCallPhone=data.get('onCallPhone').trim();
+    if ([emergencyPhone,onCallPhone].some(value=>value&&!patientPhone(value))) {
+      $('#admin-form-error').textContent='راجع رقم الطوارئ أو رقم الطبيب المناوب.';return;
+    }
+    db.hospitalProfile = {...profile,name,address:data.get('address').trim(),phone:data.get('phone').trim(),emergencyPhone,onCallPhone};
     log('تحديث بيانات المستشفى',name);
     closeModal();
     shell();
@@ -119,8 +126,8 @@ function editHospitalDoctor(name = '', host = null) {
     <label class="field"><span>مكان العيادة</span><input class="input" name="location" value="${esc(doctor?.location || '')}" maxlength="140" required placeholder="المبنى، الدور، رقم العيادة"></label>`;
   const scheduleFields = `<fieldset class="admin-doctor-days full"><legend>أيام العمل</legend>${bookingDayNames.map((day,i) =>
       `<label><input type="checkbox" name="day" value="${i}" ${doctor?.days.includes(i) ? 'checked' : ''}> ${day}</label>`).join('')}</fieldset>
-    <label class="field"><span>أول موعد</span><input class="input" name="start" type="time" value="${esc(doctor?.hours[0] || '09:00')}" required></label>
-    <label class="field"><span>آخر موعد</span><input class="input" name="end" type="time" value="${esc(doctor?.hours.at(-1) || '12:00')}" required></label>
+    <label class="field"><span>أول موعد</span><input class="input" name="start" type="time" value="${esc(doctor?.hours[0] || defaultClinicHours[0])}" required></label>
+    <label class="field"><span>آخر موعد</span><input class="input" name="end" type="time" value="${esc(doctor?.hours.at(-1) || defaultClinicHours.at(-1))}" required></label>
     <label class="full"><input type="checkbox" name="active" ${doctor?.active !== false ? 'checked' : ''}> متاح للحجز</label>`;
   const content = host ? adminSection('البيانات الأساسية',`<div class="form-grid">${basicFields}</div>`) +
     adminSection('أوقات الحجز',`<div class="form-grid">${scheduleFields}</div>`) +

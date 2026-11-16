@@ -16,6 +16,7 @@ try {
   if (candidate && Object.hasOwn(roles, candidate.role) &&
       (!candidate.expiresAt || candidate.expiresAt > Date.now()) &&
       (candidate.role !== 'patient' || db.patients.some(p => p.id === candidate.patientId)) &&
+      (candidate.role !== 'doctor' || !candidate.doctorEmail || demoDoctorAccounts.has(candidate.doctorEmail)) &&
       (!candidate.staffId || activeReceptionStaff(candidate))) {
     demoSession = candidate;
   }
@@ -29,7 +30,8 @@ const shortNav = {
   queue: 'الاستقبال', audit: 'سجل النشاط'
 };
 const initials = name => name.split(' ').slice(0, 2).map(x => x[0]).join(' ');
-const logo = () => `<a class="wordmark" href="#home"><img class="brand-logo" src="./assets/mnu-university-logo.jpg" alt="شعار جامعة المنصورة الجديدة" /><span class="wordmark-copy"><strong>${esc(hospitalProfile().name)}</strong></span></a>`;
+const hospitalLogo = () => '<img class="brand-logo" src="./assets/mnu-university-logo.jpg" alt="شعار جامعة المنصورة الجديدة" />';
+const logo = (destination = 'home') => `<a class="wordmark" href="#${esc(destination)}">${hospitalLogo()}<span class="wordmark-copy"><strong><bdi>${esc(hospitalProfile().name)}</bdi></strong></span></a>`;
 
 function allowAction(action, el) {
   if (['toggle-password', 'toggle-register-password', 'login-help'].includes(action)) return false;
@@ -41,7 +43,7 @@ function allowAction(action, el) {
     if (['cancel-booking', 'confirm-cancel'].includes(action)) {
       return db.appointments.some(a => a.id === el.dataset.id && a.patient === demoSession.patientId && canEditBooking(a));
     }
-    return ['book','book-doctor','doctor-profile', 'contact', 'attachment-upload', 'attachment-open', 'attachment-filter', 'health-archive-tab'].includes(action);
+    return ['book','full-reschedule','book-doctor','doctor-profile', 'contact', 'attachment-upload', 'attachment-open', 'attachment-filter'].includes(action);
   }
   if (role === 'radiologist') return ['attachment-upload', 'attachment-open'].includes(action);
   if (role === 'admin') return ['reset','confirm-reset','edit-hospital','add-directory-doctor','edit-directory-doctor','add-reception-staff','edit-reception-staff','book','new-patient','admin-book-patient','attachment-open',
@@ -49,7 +51,7 @@ function allowAction(action, el) {
     'admin-print-report'].includes(action) ||
     (['cancel-booking','confirm-cancel'].includes(action) && db.appointments.some(a => a.id === el.dataset.id && canEditBooking(a)));
   if (role === 'reception') return ['book','new-patient','confirm-appointment','arrive-appointment',
-    'reception-card','reception-book-person','reception-print','reception-verify','reception-queue-next','reception-book-slot'].includes(action) ||
+    'reception-card','reception-book-person','reception-print','reception-verify','reception-queue-next','reception-book-slot','reception-walk-in','reception-ticket','reception-transfer','reception-no-show'].includes(action) ||
     (['edit-booking','cancel-booking','confirm-cancel'].includes(action) && db.appointments.some(a => a.id === el.dataset.id && canEditBooking(a)));
   if (role === 'doctor') {
     if (['vitals','attachment-upload','attachment-open'].includes(action)) return doctorCanAccess(selected);
@@ -111,7 +113,9 @@ function loginPage(kind) {
                   <button type="button" class="password-toggle" data-action="toggle-password" aria-label="إظهار كلمة المرور" aria-pressed="false">${icon('eye')}<span>إظهار</span></button>
                 </div>
               </div>
-              <div class="login-form-meta"><label class="remember-me"><input type="checkbox" name="remember"><span>تذكرني</span></label><button type="button" class="text-link" data-action="login-help">نسيت كلمة المرور؟</button></div>
+              <div class="login-form-meta"><label class="remember-me"><input type="checkbox" name="remember"><span>تذكرني</span></label>
+                ${isPatient ? '<a class="text-link" href="#login/patient/recovery">نسيت كلمة المرور؟</a>' :
+                  '<button type="button" class="text-link" data-action="login-help">نسيت كلمة المرور؟</button>'}</div>
               <p id="login-error" class="form-error" role="alert"></p>
               <button type="submit" class="button primary full login-submit">${isPatient ? 'دخول إلى بوابتي' : mode==='radiologist' ? 'دخول إلى مساحة الأشعة' : staffEntry ? 'دخول إلى مساحة العمل' : 'دخول إلى مساحة الطبيب'} <span class="login-submit-arrow">${icon('arrow')}</span></button>
             </form>
@@ -135,12 +139,14 @@ function loginPage(kind) {
     const validPassword = storedCredential ? await passwordDigest(password, storedCredential.salt) === storedCredential.hash : password === DEMO_PASSWORD;
     const authorized = isPatient ? !!person : receptionAccount
       ? !!activeReceptionStaff({role:'reception',staffId:receptionAccount.id,staffVersion:receptionAccount.version})
+      : loginRole === 'doctor' ? demoDoctorAccounts.has(professionalEmail)
       : professionalEmail === (loginRole === 'radiologist' ? 'radiologist@mnu333.demo' : email);
     if (!validPassword || !authorized) {
       $('#login-error').textContent = isPatient ? 'راجع رقم الملف أو الهاتف وكلمة المرور.' : 'راجع البريد المهني وكلمة المرور.';
       return;
     }
     demoSession = {role:loginRole,patientId:isPatient ? person.id : null,
+      ...(loginRole==='doctor' ? {doctorEmail:professionalEmail} : {}),
       ...(receptionAccount ? {staffId:receptionAccount.id,staffVersion:receptionAccount.version} : {})};
     try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(demoSession)); } catch {}
     try {
@@ -216,7 +222,7 @@ function registerPage() {
     try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(demoSession)); } catch {}
     try { localStorage.removeItem(REMEMBER_KEY); } catch {}
     selected = newId;
-    location.hash = 'portal';
+    location.hash = 'patient-onboarding/1';
     toast('تم إنشاء حسابك. رقم الملف: ' + newId);
   });
 }
@@ -238,45 +244,14 @@ function dashboard() {
   return clinicalDashboard();
 }
 
-function portal() {
-  const p = patient();
-  const directory = bookingDirectory();
-  const upcoming = db.appointments.filter(a=>a.patient===p.id && canEditBooking(a)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
-  const next = upcoming[0];
-  const appointments = db.appointments.filter(a=>a.patient===p.id).slice().sort((a,b)=>(b.status!=='ملغي')-(a.status!=='ملغي') || (a.date+a.time).localeCompare(b.date+b.time));
-  const reports = db.sharedReports.filter(r=>r.patient===p.id).slice().reverse();
-  const day = date => Number(date.slice(8,10));
-  const month = date => new Date(date+'T12:00:00').toLocaleDateString('ar-EG',{month:'long'});
-  const time = value => esc(value || '—');
-  return `<div class="patient-home">
-    <div class="patient-home-heading"><div><span>أهلًا بعودتك</span><h1>${esc(p.name)}</h1><small>رقم الملف الطبي <bdi>${esc(p.id)}</bdi></small></div>${button(icon('plus')+' إضافة حجز جديد','book','primary patient-add-booking')}</div>
-    <nav class="patient-home-services" aria-label="خدمات المريض">${link('الأطباء والتخصصات','patient-doctors','secondary small')}${link('ملفي الطبي','patient-attachments','secondary small')}${link('تعليمات الطبيب','patient-reports','secondary small')}</nav>
-    <section class="patient-next-card" aria-label="موعدك القادم">
-      ${next ? `<div class="patient-next-details"><span class="patient-date-box"><strong>${day(next.date)}</strong><small>${esc(month(next.date))}</small></span><div><span class="patient-eyebrow">زيارتك القادمة · ${esc(new Date(next.date+'T12:00:00').toLocaleDateString('ar-EG',{weekday:'long'}))}</span><h2>${esc(directory[next.doctor]?.clinic || 'العيادة')}</h2><p>${esc(next.doctor)} · ${esc(next.type)} · <bdi>${time(next.time)}</bdi></p><p>${esc(directory[next.doctor]?.location || '')}</p></div></div>` : `<div class="patient-next-details"><span class="patient-date-box">${icon('calendar')}</span><div><span class="patient-eyebrow">زيارتك القادمة</span><h2>لسه ما عندكش حجز قادم</h2><p>اختَر موعدًا مناسبًا من زر إضافة حجز جديد.</p></div></div>`}
-      <p class="patient-visit-note">${icon('info')} ${next ? (next.status === 'بانتظار التأكيد' ? 'الحجز بانتظار تأكيد الاستقبال.' : 'يفضل الحضور قبل الموعد بـ 15 دقيقة، مع إحضار أي فحوصات سابقة.') : 'الحجز الجديد يظهر هنا وفي مواعيدي، والاستقبال يؤكده.'}</p>
-      <div class="patient-next-actions">${next ? link('تفاصيل الزيارة','appointments','primary') : button(icon('plus')+' إضافة حجز جديد','book','primary')} ${canEditBooking(next) ? button('تعديل الحجز','edit-booking','secondary',`data-id="${esc(next.id)}"`) : ''}</div>
-    </section>
-    <div class="patient-home-grid">
-      <section class="patient-home-card patient-appointments-card"><div class="patient-card-heading"><h2>مواعيدي</h2><button class="text-link" data-action="book">${icon('plus')} إضافة حجز</button></div>
-        <div class="patient-appointment-list">${appointments.length ? appointments.slice(0,4).map(a=>`<div class="patient-appointment-row"><span class="patient-row-date"><strong>${day(a.date)}</strong><small>${esc(month(a.date))}</small></span><div><strong>${esc(directory[a.doctor]?.clinic || 'العيادة')}</strong><small>${esc(a.doctor)} · <bdi>${time(a.time)}</bdi> · ${esc(a.type)}</small></div>${badge(a.status,a.status==='ملغي'?'gray':'emerald')}</div>`).join('') : '<p class="patient-empty">لا توجد مواعيد مسجلة بعد. اضغط «إضافة حجز» للبدء.</p>'}</div>
-        <a class="patient-card-more" href="#appointments">عرض كل المواعيد ${icon('arrow')}</a>
-      </section>
-      <div class="patient-side-cards"><section class="patient-home-card patient-instructions-card"><div class="patient-card-heading"><h2>تعليمات طبيبك</h2><a href="#patient-reports">عرض الكل</a></div>
-          ${reports.length ? reports.slice(0,2).map(r=>`<div class="patient-instruction"><span>${icon('check')}</span><p>${esc(r.plan)}</p></div>`).join('') : '<p class="patient-empty">ستظهر هنا تعليمات المتابعة التي يشاركها طبيبك بعد الزيارة.</p>'}</section></div>
-    </div>
-  </div>`;
-}
-
 function patientReports() {
-  const reports=db.sharedReports.filter(r=>r.patient===demoSession.patientId).slice().reverse();
-  return `${pageHead('تعليمات الطبيب','إرشادات المتابعة التي اعتمدها طبيبك وشاركها معك.','','بوابة المريض')}
-    <section class="card"><div class="card-body">${reports.length ? reports.map(r=>`<article class="report-entry"><span class="badge teal">مشاركة من الطبيب</span><time>${esc(r.date)}</time><h2>تعليمات المتابعة</h2><p>${esc(r.instructions || r.plan)}</p></article>`).join('') : empty('لا توجد تعليمات مشاركة بعد','ستظهر تعليمات طبيبك هنا بعد اعتماد الزيارة ومشاركتها معك.',link('مواعيدي','appointments','secondary'))}</div></section>`;
-}
-
-function patientProfile() {
-  const p=patient();
-  return `${pageHead('بياناتي','بيانات ملفك ووسيلة التواصل معك.',button('تعديل الهاتف','contact','primary'),'بوابة المريض')}
-    <section class="profile-sheet"><span class="initial-avatar large">${esc(initials(p.name))}</span><h2>${esc(p.name)}</h2><dl class="profile-fields">${[['رقم الملف',p.id],['العمر',p.age?p.age+' سنة':'غير مسجل'],['رقم الهاتف',p.phone],['الطبيب المتابع',p.doctor],['الحساسية المسجلة',p.allergy]].map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><p class="muted">لتصحيح البيانات الطبية، راجع فريق العيادة.</p></section>`;
+  const reports = db.sharedReports.filter(row=>row.patient===patientSessionId()).slice().reverse();
+  const instructions = reports.filter(row=>row.instructions||row.plan).map(row=>`<article class="health-archive-detail">
+    <div><strong>تعليمات المتابعة</strong><time>${patientServiceDate(row.date)}</time></div>
+    <p class="patient-shared-plan">${esc(row.instructions||row.plan)}</p></article>`).join('');
+  return '<div class="patient-screen-stack">'+patientScreenPanel('تعليمات طبيبك',instructions||
+    patientScreenEmpty('لا توجد تعليمات مشاركة بعد · ستظهر هنا بعد اعتماد الزيارة ومشاركتها',
+      link('مواعيدي','appointments','secondary')))+patientPrescriptionPanels(reports)+'</div>';
 }
 
 function ai() {
@@ -313,19 +288,29 @@ function render() {
     closeModal();
   }
   const [requested='', id, section] = location.hash.slice(1).split('/');
+  if (requested==='check-in-kiosk') { kioskPage();return; }
   if (requested==='home' || (!requested && !demoSession)) { hospitalHome(); return; }
   if (requested==='register') { registerPage(); return; }
   if (requested==='login' || !demoSession) {
     $('#modal-root').innerHTML='';
-    loginPage(requested==='login' ? id : 'patient');
+    if (requested==='login'&&id==='patient'&&section==='recovery') patientVerificationPage();
+    else loginPage(requested==='login' ? id : 'patient');
     return;
   }
   role=demoSession.role;
-  if (['reception','admin'].includes(role)) db=readLocalDatabase() || db;
+  if (['patient','reception','admin'].includes(role)) db=readLocalDatabase() || db;
+  if (role==='patient' && demoSession.patientId===patientPreviewId) seedPatientPreview();
+  if (role==='patient' && !db.patients.some(p=>p.id===demoSession.patientId)) {
+    demoSession=null;
+    try { sessionStorage.removeItem(SESSION_KEY); localStorage.removeItem(REMEMBER_KEY); } catch {}
+    history.replaceState(null,'','#login/patient');
+    loginPage('patient');
+    return;
+  }
   if (role==='patient') selected=demoSession.patientId;
   const fallback=role==='patient'?'portal':role==='radiologist'?'documents':'dashboard';
   const route=allowed[role].includes(requested)?requested:fallback;
-  if (role==='doctor' && route==='appointments') db=readLocalDatabase() || db;
+  if (role==='doctor') db=readLocalDatabase() || db;
   if (route!==requested) history.replaceState(null,'','#'+route);
   const doctorRecordRoute = role === 'doctor' && ['record','encounter'].includes(route);
   const blockedRecord = doctorRecordRoute && id && !doctorCanAccess(id);
@@ -334,32 +319,64 @@ function render() {
     else if (!doctorCanAccess(selected)) selected=doctorPatients()[0]?.id || '';
   }
   if (!$('.hybrid-shell') || $('.hybrid-shell').dataset.role!==role) shell();
-  const pages={dashboard,'manage-doctors':hospitalDoctorAdminPage,'manage-reception':hospitalReceptionAdminPage,'admin-bookings':hospitalBookingAdminPage,consultations:consultationsPage,patients,record,encounter,appointments,queue,ai,documents,portal,audit,settings,'patient-reports':patientReports,'patient-profile':patientProfile,'patient-doctors':patientDoctorsPage,'patient-attachments':patientAttachmentsPage};
+  const pages={dashboard,'manage-doctors':hospitalDoctorAdminPage,'manage-reception':hospitalReceptionAdminPage,'admin-bookings':hospitalBookingAdminPage,consultations:consultationsPage,patients,record,encounter,appointments,queue,ai,documents,portal,audit,settings};
+  pages['appointment-waitlist']=appointmentWaitPage;
+  if (role==='patient') Object.assign(pages,{
+    appointments:()=>patientAppointmentsScreen(id,section),
+    'patient-doctors':()=>id==='profile'?patientDoctorProfile(patientDecode(section)):patientDoctorsPage(id),
+    'patient-attachments':()=>id==='medications'?patientMedicationsPage():
+      ['result','prescription'].includes(id)?patientDocumentPage(id,patientDecode(section)):patientHealthArchivePage(id,section),
+    'patient-reports':()=>patientHealthArchivePage('instructions'),
+    'patient-profile':()=>id==='stay'?'<div class="patient-screen">'+patientScreenHeading('الإقامة والدخول والخروج')+patientStaySummary()+'</div>':
+      patientProfileLinks.some(([view])=>view===id)?patientPreferencesPage(id):patientAccountScreen('profile'),
+    'patient-services':patientServicesPage, 'patient-billing':()=>patientAccountScreen('billing',patientDecode(id)),
+    'patient-notices':()=>patientInboxScreen('notices'),
+    'patient-requests':()=>id==='feedback'?patientFeedbackPage():['sent','track'].includes(id)?patientRequestReceipt(patientDecode(section),id==='track'):
+      ['faq','location'].includes(id)?patientSupportDetail(id):patientInboxScreen(id==='support'?'support':'overview',id),
+    'patient-journey':()=>patientJourneyPage(patientDecode(id),section),
+    'patient-family':()=>id==='member'?patientFamilyProfile(patientDecode(section)):patientFamilyPage(),
+    'patient-messages':()=>patientInboxScreen('messages',patientDecode(id)),
+    'patient-insurance':()=>patientAccountScreen('billing'),
+    'patient-care':()=>id==='room'?patientCareRoom(patientDecode(section)):patientInboxScreen('care'),
+    'patient-emergency':()=>patientEmergencyPage(id),
+    'patient-search':()=>patientPortalSearch(patientSearchQuery),
+    'patient-onboarding':()=>patientOnboardingPage(id),
+    'patient-pay':()=>patientPayPage(patientDecode(id)),
+    'patient-diagnostics':()=>patientHealthArchivePage('tests')
+  });
   if (role === 'reception') Object.assign(pages, {
     patients:receptionPatientsPage, appointments:()=>receptionTimetable(id),
     'reception-checkin':()=>receptionDesk(id), queue:()=>receptionDesk(id),
     'reception-schedule':()=>receptionTimetable('schedule'), 'reception-reports':receptionAnalytics,
-    'reception-file':()=>receptionFile(id,section), 'reception-billing':receptionBilling, 'reception-admissions':receptionAdmissions
+    'reception-file':()=>receptionFile(id,section), 'reception-billing':receptionBilling, 'reception-admissions':receptionAdmissions,
+    'reception-services':()=>receptionExtraPage(id)
   });
   if (role === 'doctor') Object.assign(pages, {
-    patients:doctorPatientPage, record:doctorRecordPage, appointments:doctorSchedulePage, 'doctor-reports':doctorReportsPage
+    patients:doctorPatientPage, record:doctorRecordPage, appointments:doctorSchedulePage, 'doctor-reports':doctorReportsPage,
+    'doctor-workspace':()=>doctorWorkPage(id,section)
   });
   if (role === 'admin') Object.assign(pages, {
     'manage-doctors':() => adminPeoplePage(route, id), 'admin-staff':() => adminPeoplePage(route, id),
     'manage-reception':() => adminPeoplePage(route, id), 'admin-doctor':() => adminDoctorFile(id, section),
     'admin-patient':() => adminPatientFile(id, section), 'admin-archive':() => adminArchivePage(id),
     'admin-billing':() => adminBillingPage(id), 'admin-bookings':() => hospitalBookingAdminPage(id),
+    'admin-patient-requests':adminPatientRequestsPage,
     'admin-inventory':() => adminInventoryPage(id), 'admin-patients':() => adminPatientsPage(id),
     'admin-facilities':() => adminHospitalPage(id), settings:() => adminHospitalPage('backup'),
     'admin-reports':() => adminReportHub(id), audit:() => adminReportHub('audit'),
     'admin-diagnostics':() => adminDiagnosticsPage(id), 'admin-models':() => adminDiagnosticsPage('models')
   });
   $('#main').dataset.route=route;
+  if (role==='patient') stopPatientMedia();
   $('#main').innerHTML=blockedRecord?doctorNoPatients():route==='model'?modelPage(id):(pages[route]||dashboard)();
-  const title=(role === 'reception' && receptionTitles[route])||(role === 'doctor' && doctorTitles[route])||(role === 'admin' && adminTitles[route])||shortNav[route]||({portal:'ملخص رعايتي','patient-reports':'تعليمات الطبيب','patient-profile':'بياناتي','patient-doctors':'الأطباء والتخصصات',record:'ملف المريض',encounter:'الزيارة',model:'النماذج السبعة'})[route];
-  document.title=(title||'مساحة الرعاية')+' | MNU 333';
+  if (role==='patient' && $('#main').dataset.location!==location.hash) {
+    $('#main').dataset.location=location.hash;
+    $('#main').scrollTop=0;
+  }
+  const title=(role === 'reception' && receptionTitles[route])||(role === 'doctor' && doctorTitles[route])||(role === 'admin' && adminTitles[route])||shortNav[route]||({portal:'ملخص رعايتي','patient-reports':'تعليمات الطبيب','patient-profile':'حسابي','patient-attachments':'صحتي','patient-doctors':'الأطباء والتخصصات','appointment-waitlist':'قائمة انتظار المواعيد',record:'ملف المريض',encounter:'الزيارة',model:'النماذج السبعة'})[route];
+  document.title=(patientExtraTitles[route]||patientServiceTitles[route]||title||'مساحة الرعاية')+' | MNU 333';
   $$('[data-nav]').forEach(a=>{
-    const active=a.dataset.nav===route || (role==='admin' && a.dataset.nav===adminNavParent[route]) ||
+    const active=a.dataset.nav===route || (role==='patient' && a.dataset.nav===patientPortalParents[route]) || (role==='admin' && a.dataset.nav===adminNavParent[route]) ||
       (role==='reception' && a.dataset.nav===receptionNavParent[route]) ||
       (a.dataset.nav==='patients'&&['record','encounter'].includes(route)) || (a.dataset.nav==='ai'&&route==='model');
     a.classList.toggle('active',active);
@@ -369,10 +386,20 @@ function render() {
   $('.menu-trigger')?.setAttribute('aria-expanded','false');
   bindPage();
   bindWorkspace();
+  if (role === 'patient') {
+    applyPatientPreferences();
+    bindPatientReferenceScreens();
+    bindPatientWorkflows();
+    bindPatientDoctorProfile();
+    bindPatientSlotPicker();
+    bindPatientConversation();
+    bindPatientBookingReceipt();
+    if (route==='patient-doctors') filterPatientDoctors();
+  }
   if (role === 'reception') bindReceptionPage();
   if (role === 'doctor') bindDoctorPortal(route);
   if (role === 'admin') bindAdminWorkspace();
-  if (bookingAfterLogin && role === 'patient') { bookingAfterLogin=false; book(); }
+  if (bookingAfterLogin && role === 'patient' && route!=='patient-onboarding') { bookingAfterLogin=false; book(); }
   $('#day-search')?.addEventListener('input',e=>{
     const pos=e.target.selectionStart;dayQuery=e.target.value;render();
     $('#day-search').focus();$('#day-search').setSelectionRange(pos,pos);
@@ -399,9 +426,10 @@ document.addEventListener('click',e=>{
   if(action==='close-login' || (action==='close'&&!demoSession))closeModal();
   if(action==='logout'&&demoSession){
     const loginRole=demoSession.role;demoSession=null;
+    if (loginRole==='patient') patientSearchQuery='';
     try{sessionStorage.removeItem(SESSION_KEY);}catch{}
     try{localStorage.removeItem(REMEMBER_KEY);}catch{}
-    closeModal();draft={};lastDoctorRecord='';adminPeriod='daily';adminPatientQuery='';adminAgeFilter='';adminClinicFilter='';doctorVisitDate='';doctorScheduleDate='';doctorScheduleDay='';patientFilter='';bookingAfterLogin=false;query='';dayQuery='';patientArchiveKind='all';patientArchiveQuery='';patientHealthTab='overview';selected='CL-1024';
+    closeModal();draft={};lastDoctorRecord='';adminPeriod='daily';adminPatientQuery='';adminAgeFilter='';adminClinicFilter='';doctorVisitDate='';doctorScheduleDate='';doctorScheduleDay='';patientFilter='';bookingAfterLogin=false;query='';dayQuery='';patientArchiveKind='all';patientArchiveQuery='';selected='CL-1024';
     location.hash='login/'+loginRole;
   }
   if(!demoSession)return;
@@ -414,8 +442,9 @@ document.addEventListener('click',e=>{
 render();
 
 window.addEventListener('storage', event => {
-  if (event.key === LOCAL_DATABASE_KEY && demoSession?.role === 'doctor' && location.hash === '#appointments') render();
-  if (event.key === LOCAL_DATABASE_KEY && ['reception','admin'].includes(demoSession?.role) &&
+  if (event.key === LOCAL_DATABASE_KEY && demoSession?.role === 'doctor' &&
+    ['#appointments','#consultations','#dashboard'].includes(location.hash) && !$('#modal-root .modal')) render();
+  if (event.key === LOCAL_DATABASE_KEY && ['patient','reception','admin'].includes(demoSession?.role) &&
     !$('#modal-root .modal') && !document.activeElement?.matches('input, select, textarea')) render();
   if ((event.key === RECEPTION_STAFF_KEY || event.key === null) && demoSession?.staffId && !activeReceptionStaff(demoSession)) render();
 });

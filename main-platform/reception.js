@@ -2,7 +2,8 @@ const receptionTitles = {
   dashboard: 'لوحة الاستقبال', patients: 'المرضى', appointments: 'الحجوزات والجداول',
   'reception-checkin': 'مكتب الاستقبال', queue: 'مكتب الاستقبال', 'reception-file':'ملف المريض',
   'reception-schedule': 'الحجوزات والجداول', 'reception-reports': 'التقارير',
-  'reception-billing':'الحسابات والمدفوعات', 'reception-admissions':'الإقامة: الدخول والخروج'
+  'reception-billing':'الحسابات والمدفوعات', 'reception-admissions':'الإقامة: الدخول والخروج',
+  'reception-services':'خدمات الاستقبال'
 };
 const receptionQueueStates = {
   waiting: {label: 'في الانتظار', next: 'called', action: 'نداء المريض'},
@@ -124,6 +125,7 @@ function registerReceptionPatient() {
   $('#reception-register').addEventListener('submit', event => {
     event.preventDefault();
     if (!allowAction('new-patient',event.target)) return;
+    db = readLocalDatabase() || db;
     const values = Object.fromEntries([...new FormData(event.target)].map(([key,value]) => [key,value.trim()]));
     const error = $('#reception-register-error');
     values.phone = receptionPhone(values.phone);
@@ -161,6 +163,7 @@ function registerReceptionPatient() {
 }
 
 function verifyReceptionArrival(id) {
+  if (!receptionRefreshRecords()) return;
   const a = db.appointments.find(item => item.id === id);
   if (a?.status !== 'مؤكد' || a.date !== receptionToday()) return;
   modal('تأكيد وصول المريض', '<p>تحقق من هوية ' + esc(receptionPerson(a.patient)?.name || a.patient) +
@@ -168,14 +171,145 @@ function verifyReceptionArrival(id) {
     button('تم التحقق، سجّل الوصول','arrive-appointment','primary',receptionIdAttr(a)) + button('إلغاء','close','secondary'));
 }
 
+const receptionClinicOpenToday = schedule => schedule.active !== false &&
+  schedule.days.includes(new Date().getDay()) && schedule.hours.length > 0;
+const receptionActiveArrival = patientId => db.appointments.find(a => a.patient === patientId &&
+  (a.queueDate || a.date) === receptionToday() && a.status === 'تم تسجيل الوصول');
+
+const receptionCanTransfer = visit => visit?.status==='تم تسجيل الوصول' &&
+  (visit.queueDate||visit.date)===receptionToday() && ['waiting','called'].includes(visit.queueState||'waiting') &&
+  !db.visits.some(record=>record.appointmentId===visit.id);
+
+const receptionCanMarkNoShow = visit => visit?.status==='مؤكد' && !visit.arrivalAt &&
+  Number.isFinite(Date.parse(visit.date+'T'+visit.time)) && Date.parse(visit.date+'T'+visit.time)<Date.now();
+
+function receptionMarkNoShow(id) {
+  if (!receptionRefreshRecords()) return;
+  const visit=db.appointments.find(a=>a.id===id);
+  if (!receptionCanMarkNoShow(visit)) { toast('الحجز غير متاح لتسجيل عدم الحضور.');return; }
+  modal('تسجيل عدم الحضور',`<p>${esc(receptionPerson(visit.patient)?.name||visit.patient)} ·
+    ${esc(receptionDate(visit.date))} · <bdi>${esc(visit.time)}</bdi></p>
+    <form id="reception-no-show-form"><button class="button primary" type="submit">تأكيد عدم الحضور</button></form>`);
+  $('#reception-no-show-form').addEventListener('submit',event=>{
+    event.preventDefault();
+    if (!receptionRefreshRecords()) return;
+    const current=db.appointments.find(a=>a.id===id);
+    if (!receptionCanMarkNoShow(current)) { closeModal();render();toast('اتحدّثت حالة الحجز.');return; }
+    Object.assign(current,{status:'لم يحضر',noShowAt:new Date().toISOString()});
+    log('تسجيل عدم الحضور',id);closeModal();render();toast('تم تسجيل عدم الحضور.');
+  });
+}
+
+function receptionTransfer(id) {
+  if (!receptionRefreshRecords()) return;
+  const visit=db.appointments.find(a=>a.id===id);
+  if (!receptionCanTransfer(visit)) { toast('التحويل متاح قبل بدء الكشف.');return; }
+  const choices=Object.entries(bookingDirectory()).filter(([name,schedule])=>name!==visit.doctor&&receptionClinicOpenToday(schedule));
+  if (!choices.length) { toast('لا توجد عيادة بديلة مجدولة اليوم.');return; }
+  const source=visit.doctor;
+  modal('تحويل إداري لعيادة أخرى',`<form id="reception-transfer" class="patient-service-form">
+    <p>${esc(receptionPerson(visit.patient)?.name||visit.patient)} · ${esc(receptionClinic(visit))}</p>
+    ${adminSelect('العيادة المستقبلة','doctor',choices.map(([name,d])=>[name,d.clinic+' · '+name]),choices[0][0],'required')}
+    ${field('سبب التحويل الإداري','reason','','text','required maxlength="200"')}
+    <label><input type="checkbox" name="received" required> العيادة المستقبلة أكدت قبول التحويل.</label>
+    <p class="form-error" role="alert"></p><button type="submit" class="button primary">تأكيد التحويل</button></form>`);
+  $('#reception-transfer').addEventListener('submit',event=>{
+    event.preventDefault();
+    if (!receptionRefreshRecords()) return;
+    const form=event.currentTarget;
+    const {doctor,reason,received}=Object.fromEntries(new FormData(form));
+    const current=db.appointments.find(a=>a.id===id);
+    const target=bookingDirectory()[doctor];
+    if (!receptionCanTransfer(current)||current.doctor!==source||doctor===source||!target||
+      !receptionClinicOpenToday(target)||!received||!reason?.trim()||reason.length>200) {
+      form.querySelector('[role=alert]').textContent='راجع حالة الزيارة وتوافر العيادة وتأكيد الاستلام.';return;
+    }
+    const now=new Date().toISOString();
+    const patient=receptionPerson(current.patient);
+    (current.transfers ||= []).push({from:source,to:doctor,reason:reason.trim(),at:now,
+      receivedAt:now,actor:demoSession.staffId||'reception-demo'});
+    if (current.source!=='walk-in') current.scheduledDoctor ||= source;
+    Object.assign(current,{doctor,queueState:'waiting',calledAt:null});
+    if (patient?.doctor===source) patient.doctor=doctor;
+    log('تحويل إداري إلى عيادة',id);
+    closeModal();render();receptionArrivalTicket(id);toast('تم التحويل وتحديث قائمة الانتظار.');
+  });
+}
+
+function receptionArrivalTicket(id) {
+  if (!receptionRefreshRecords()) return;
+  const visit = db.appointments.find(a => a.id === id && a.queueNumber);
+  if (!visit) return;
+  const person = receptionPerson(visit.patient);
+  modal('تذكرة الوصول', `<article class="reception-print-card"><strong>${esc(hospitalProfile().name)}</strong>
+    <h2>رقم الانتظار <bdi>A${esc(visit.queueNumber)}</bdi></h2>
+    <p>${esc(person?.name || visit.patient)} · <bdi>${esc(visit.patient)}</bdi></p>
+    <p>${esc(receptionClinic(visit))} · ${esc(visit.doctor)}</p>
+    <p>${esc(receptionDate(visit.queueDate || visit.date))} · <bdi>${esc(new Date(visit.arrivalAt).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}))}</bdi></p>
+    <p>${visit.source==='walk-in'?'زيارة بدون حجز':'وصول لموعد محجوز'}</p></article>`,
+    button('طباعة التذكرة','reception-print','primary')+button('إغلاق','close','secondary'));
+}
+
+function receptionWalkIn(id) {
+  if (!receptionRefreshRecords()) return;
+  const person = receptionPerson(id);
+  if (!person) return;
+  const doctors = Object.entries(bookingDirectory()).filter(([,schedule]) => receptionClinicOpenToday(schedule));
+  if (!doctors.length) { toast('لا توجد عيادات مجدولة اليوم.'); return; }
+  const departments = [...new Set(doctors.map(([,schedule]) => schedule.department))];
+  modal('تسجيل وصول بدون حجز', `<form id="reception-walk-in-form" class="patient-service-form">
+    <p>${esc(person.name)} · <bdi>${esc(id)}</bdi></p>
+    ${adminSelect('التخصص','department',departments.map(name=>[name,name]),departments[0])}
+    ${adminSelect('الطبيب والعيادة','doctor',[],'','required')}
+    <label><input type="checkbox" name="verified" required> تحققت من هوية المريض ورقم الملف.</label>
+    <p class="form-error" role="alert"></p><button type="submit" class="button primary">تسجيل الوصول وإصدار الدور</button></form>`);
+  const form = $('#reception-walk-in-form');
+  const {department,doctor} = form.elements;
+  const updateDoctors = () => {
+    doctor.replaceChildren(...doctors.filter(([,schedule])=>schedule.department===department.value)
+      .map(([name,schedule])=>new Option(name+' · '+schedule.clinic,name)));
+  };
+  department.addEventListener('change',updateDoctors);
+  updateDoctors();
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    if (!receptionRefreshRecords()) return;
+    const error = form.querySelector('[role=alert]');
+    const patient = receptionPerson(id);
+    const schedule = bookingDirectory()[doctor.value];
+    if (!form.elements.verified.checked || !patient || !schedule || schedule.department !== department.value || !receptionClinicOpenToday(schedule)) {
+      error.textContent='راجع هوية المريض وتوافر العيادة.'; return;
+    }
+    if (receptionActiveArrival(id)) { error.textContent='المريض موجود بالفعل في قائمة اليوم.'; return; }
+    const booked = db.appointments.some(a=>a.patient===id && a.doctor===doctor.value && a.date===receptionToday() &&
+      ['مؤكد','بانتظار التأكيد'].includes(a.status));
+    if (booked) { error.textContent='للمريض موعد اليوم مع الطبيب. سجّل وصوله من الحجوزات القائمة.'; return; }
+    const now = new Date();
+    const visit = {id:'W-'+crypto.randomUUID(),patient:id,doctor:doctor.value,date:bookingDateKey(now),
+      time:now.toTimeString().slice(0,5),type:'زيارة بدون حجز',source:'walk-in',
+      status:'تم تسجيل الوصول',createdAt:now.toISOString()};
+    recordReceptionArrival(visit);
+    db.appointments.push(visit);
+    Object.assign(patient,{status:'بانتظار الطبيب',doctor:visit.doctor});
+    log('تسجيل وصول بدون حجز',visit.id);
+    closeModal();
+    if (location.hash === '#reception-checkin/'+id) render();
+    else location.hash='reception-checkin/'+id;
+    receptionArrivalTicket(visit.id);
+    toast('تم تسجيل الوصول وإصدار رقم الانتظار.');
+  });
+}
+
 function recordReceptionArrival(a) {
   const now = new Date();
   const queueDate = bookingDateKey(now);
   const highest = Math.max(0,...db.appointments.filter(item => item.queueDate === queueDate).map(item => item.queueNumber || 0));
   Object.assign(a,{arrivalAt:now.toISOString(),queueDate,queueNumber:highest+1,queueState:'waiting'});
+  if (a.kioskToken) a.kioskToken=null;
 }
 
 function advanceReceptionQueue(id) {
+  if (!receptionRefreshRecords()) return;
   const a = db.appointments.find(item => item.id === id);
   if (a?.status !== 'تم تسجيل الوصول' || (a.queueDate || a.date) !== receptionToday()) return;
   const state = receptionQueueStates[a.queueState] || receptionQueueStates.waiting;
@@ -186,6 +320,7 @@ function advanceReceptionQueue(id) {
     a.calledAt = new Date().toISOString();
   }
   if (state.next === 'in-consultation') {
+    a.consultationAt = new Date().toISOString();
     const p = receptionPerson(a.patient);
     if (p) p.status = 'قيد الزيارة';
   }

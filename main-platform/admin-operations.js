@@ -3,7 +3,7 @@
 const adminTitles = {
   dashboard:'لوحة الإدارة', 'admin-facilities':'المستشفى والإعدادات', 'admin-staff':'الأطباء والموظفون',
   'manage-doctors':'الأطباء والموظفون', 'admin-doctor':'ملف الطبيب', 'admin-patient':'ملف المريض',
-  'admin-patients':'المرضى', 'admin-bookings':'الحجوزات والتشغيل',
+  'admin-patients':'المرضى', 'admin-bookings':'الحجوزات والتشغيل', 'admin-patient-requests':'طلبات المرضى',
   'admin-inventory':'المخزون والمشتريات', 'admin-diagnostics':'المختبر والأشعة والنماذج',
   'admin-models':'المختبر والأشعة والنماذج', 'admin-reports':'التقارير والتدقيق',
   'admin-archive':'الأرشيف الطبي', 'admin-billing':'الفوترة والتأمين',

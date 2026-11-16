@@ -37,7 +37,7 @@ function hospitalHome() {
   $('#modal-root').innerHTML='';
   $('#app').innerHTML=`<div class="hospital-landing">
     <header class="landing-header">
-      <a class="landing-brand" href="#home"><img class="brand-logo" src="./assets/mnu-university-logo.jpg" alt="شعار جامعة المنصورة الجديدة">
+      <a class="landing-brand" href="#home">${hospitalLogo()}
         <strong>${name}</strong></a>
       <nav class="landing-nav" aria-label="تنقل المستشفى">
         <a href="#home" aria-current="page">${icon('grid')} الرئيسية</a>
@@ -89,12 +89,12 @@ function clinicalShell() {
     ? [['portal','grid','الرئيسية'],['appointments','calendar','مواعيدي'],['patient-reports','file','تعليمات الطبيب'],['patient-profile','user','بياناتي']]
     : navs.filter(n=>allowed[role].includes(n[0])).map(([r,i,label])=>[r,i,(role==='reception'&&receptionTitles[r])||(role==='doctor'&&doctorTitles[r])||(role==='admin'&&adminTitles[r])||({dashboard:'لوحة العمل',consultations:'الكشف',patients:'المرضى',appointments:'المواعيد',queue:'الاستقبال والفرز',ai:'النماذج السبعة',documents:role==='radiologist'?'مساحة الأشعة':'الفحوصات والمستندات',audit:'سجل النشاط',settings:'الإعدادات','manage-doctors':'إدارة الأطباء','manage-reception':'إدارة الاستقبال','admin-bookings':'متابعة الحجوزات'})[r]||label]);
   const person = personal ? patient() : null;
-  const name = personal ? person.name : role === 'doctor' ? 'د. سارة أحمد' : activeReceptionStaff(demoSession)?.name || roles[role];
+  const name = personal ? person.name : currentDoctor() || activeReceptionStaff(demoSession)?.name || roles[role];
   const home = personal ? 'portal' : role==='radiologist' ? 'documents' : 'dashboard';
   document.body.dataset.surface = personal ? 'patient' : 'clinical';
   $('#app').innerHTML = `<div class="app-shell hybrid-shell clinical-shell ${sidebarCollapsed?'side-collapsed':''}" data-role="${role}">
     <aside id="sidebar" class="clinical-sidebar" aria-label="القائمة الرئيسية">
-      <a class="hospital-brand" href="#${home}"><img class="brand-logo" src="./assets/mnu-university-logo.jpg" alt="شعار جامعة المنصورة الجديدة" /><span class="side-label"><strong>${esc(hospitalProfile().name)}</strong>${['admin','reception'].includes(role)?'':'<small>المستشفى والرعاية المتصلة</small>'}</span></a>
+      <a class="hospital-brand" href="#${home}">${hospitalLogo()}<span class="side-label"><strong>${esc(hospitalProfile().name)}</strong>${['admin','reception'].includes(role)?'':'<small>المستشفى والرعاية المتصلة</small>'}</span></a>
       ${role === 'admin' ? adminNavigation() : `<div class="side-section side-label">${role==='reception'?'بوابة الاستقبال':'مساحة العمل'}</div>
       <nav class="clinical-nav">${items.map(([r,i,t])=>`<a href="#${r}" data-nav="${r}" title="${t}">${icon(i)}<span class="side-label">${t}</span>${r==='ai'?'<b class="nav-count side-label">7</b>':''}</a>`).join('')}</nav>`}
       <div class="sidebar-bottom"><div class="sidebar-profile">${role==='admin'?icon('shield'):role==='reception'?icon('user'):personal?personAvatar(person):doctorPhoto()}<div class="side-label"><strong>${esc(name)}</strong><small>${role==='radiologist'?'قسم الأشعة':personal?'ملفك الصحي':role==='admin'?'إدارة المستشفى':role==='reception'?'فريق الاستقبال':'عيادة أمراض الصدر'}</small></div></div>
@@ -105,6 +105,7 @@ function clinicalShell() {
     <button class="sidebar-scrim" data-action="toggle-menu" aria-label="إغلاق القائمة"></button>
     <div class="workspace clinical-workspace">
       <header class="clinical-topbar"><div class="topbar-heading"><button class="icon-btn menu-trigger" data-action="toggle-menu" aria-label="القائمة" aria-controls="sidebar" aria-expanded="false">${icon('menu')}</button><div><h1 id="workspace-title">${role==='radiologist'?'مساحة الأشعة':'مساحة الطبيب'}</h1><p id="workspace-subtitle">${dateLabel}</p></div></div>
+        <a class="clinical-top-brand" href="#${home}" aria-label="رئيسية ${esc(hospitalProfile().name)}">${hospitalLogo()}</a>
         ${role==='admin'?adminSearchBar():role==='radiologist'?'':`<form id="global-search" class="global-search">${icon('search')}<input aria-label="بحث عام عن مريض" placeholder="ابحث بالاسم، رقم الملف أو الهاتف" value=""><kbd>Ctrl K</kbd></form>`}
         <div class="topbar-tools"><span class="locale-label">العربية</span><button class="icon-btn notification-trigger" data-action="workspace-notifications" aria-label="الإشعارات" aria-expanded="false">${icon('bell')}${role!=='reception'&&!personal&&db.audit.length?'<span class="notification-dot"></span>':''}</button><div class="topbar-profile">${role==='admin'?icon('shield'):role==='reception'?icon('user'):personal?personAvatar(person):doctorPhoto()}<div><strong>${esc(name)}</strong><small>${role==='radiologist'?'قسم الأشعة':personal?'بوابة المريض':role==='admin'?'إدارة المستشفى':role==='reception'?'فريق الاستقبال':'طبيب أمراض الصدر'}</small></div></div></div>
       </header>
@@ -118,18 +119,12 @@ function clinicalShell() {
 
 function patientShell() {
   const p = patient();
-  const items = [['portal','grid','الرئيسية'],['appointments','calendar','مواعيدي'],['patient-reports','file','تعليمات الطبيب','التعليمات'],['patient-attachments','upload','أرشيفي الطبي','أرشيفي'],['patient-profile','user','ملفي']];
   document.body.dataset.surface = 'patient';
   $('#app').innerHTML = `<div class="patient-shell hybrid-shell" data-role="patient">
-    <header class="patient-header clinical-topbar">
-      <a class="patient-brand" href="#portal"><img class="brand-logo" src="./assets/mnu-university-logo.jpg" alt="شعار جامعة المنصورة الجديدة"><span><strong>${esc(hospitalProfile().name)}</strong><small>بوابة المريض</small></span></a>
-      <nav class="patient-nav" aria-label="تنقل بوابة المريض">${items.map(([r,i,t])=>`<a href="#${r}" data-nav="${r}">${icon(i)}<span>${t}</span></a>`).join('')}</nav>
-      <div class="patient-header-profile"><span class="patient-info-mark" aria-hidden="true">${icon('user')}</span><span><strong>${esc(p.name)}</strong><small><bdi>${esc(p.id)}</bdi></small></span></div>
-      <button class="patient-logout" data-action="logout" aria-label="تسجيل الخروج" title="تسجيل الخروج">${icon('logout')}</button>
-    </header>
+    ${patientPortalHeader(p)}
     <main id="main" tabindex="-1"></main>
-    <footer class="patient-footer">MNU 333 · بيانات عرض محلية · لا تُدخل بيانات طبية حقيقية</footer>
-    <nav class="mobile-bottom" aria-label="تنقل الهاتف">${items.map(([r,i,t,short])=>`<a href="#${r}" data-nav="${r}" aria-label="${t}">${icon(i)}<span>${short || t}</span></a>`).join('')}</nav>
+    <footer class="patient-footer">MNU 333 · بيانات عرض محلية</footer>
+    <nav class="mobile-bottom" aria-label="تنقل الهاتف">${patientPortalNav.map(([r,i,t,short],index)=>`<a href="#${r}" data-nav="${r}" aria-label="${t}">${icon(i)}<span data-patient-nav-label="${index}">${short || t}</span></a>`).join('')}</nav>
   </div>`;
 }
 

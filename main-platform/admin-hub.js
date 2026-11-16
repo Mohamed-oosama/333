@@ -2,7 +2,7 @@
 
 const adminNavGroups = [
   ['الرئيسية', [['dashboard','grid']]],
-  ['الأشخاص', [['manage-doctors','doctor'],['admin-patients','user']]],
+  ['الأشخاص', [['manage-doctors','doctor'],['admin-patients','user'],['admin-patient-requests','file']]],
   ['التشغيل', [['admin-bookings','calendar'],['admin-inventory','file'],['admin-diagnostics','flask']]],
   ['السجلات', [['admin-archive','database'],['admin-reports','pulse']]],
   ['المالية', [['admin-billing','file']]],
@@ -73,7 +73,7 @@ function adminDoctorFile(rawId, section) {
   const tabs=adding ? '' : adminTabs('admin-doctor/'+encodeURIComponent(id),[['','البيانات والمواعيد'],['account','الحساب والصلاحيات'],['archive','الأرشيف']],active);
   if (active==='account') return heading+tabs+adminSection('الحساب والصلاحيات',adminFacts([
     ['البريد المهني',doctor.email],['الإتاحة في دليل الحجز',doctor.active===false?'موقوف':'متاح'],
-    ['الوصول إلى مساحة الطبيب',id===demoDoctor?'حساب الطبيب التجريبي':'بيانات دليل الحجز']
+    ['الوصول إلى مساحة الطبيب',[...demoDoctorAccounts].find(([,name])=>name===id)?.[0]||'بيانات دليل الحجز']
   ]));
   if (active==='archive') return heading+tabs+adminSection('الزيارات المعتمدة',adminTable(['رقم الزيارة','رقم ملف المريض','التاريخ'],
     db.visits.filter(v=>v.approved&&v.doctor===id).map(v=>[esc(v.id),esc(v.patient),esc(v.date)]),'لا توجد زيارات معتمدة لهذا الطبيب.'));
@@ -198,7 +198,8 @@ const adminLedgers = {
 
 const adminLedgerRows = key => db.adminLedgers?.[key] || [];
 const adminPatientName = id => db.patients.find(p=>p.id===id)?.name || id;
-const adminPaymentTotal = id => adminLedgerRows('payments').filter(p=>p.invoice===id).reduce((total,p)=>total+p.amount,0);
+const adminPaymentTotal = id => adminLedgerRows('payments').filter(p=>p.invoice===id).reduce((total,p)=>total+p.amount,0)-
+  deskRows('refunds').filter(p=>p.invoice===id).reduce((total,p)=>total+p.amount,0);
 const adminInvoiceBalance = invoice => Math.round((invoice.amount-adminPaymentTotal(invoice.id))*100)/100;
 
 function adminLedgerTable(key, showAction = true) {

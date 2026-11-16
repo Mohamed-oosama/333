@@ -197,6 +197,7 @@ const navs = [
   ['ai', 'brain', 'مركز النماذج السبعة'],
   ['documents', 'file', 'الطلبات والفحوصات'],
   ['doctor-reports', 'file', 'تقارير الزيارات'],
+  ['doctor-workspace', 'grid', 'مساحة العمل السريري'],
   ['admin-facilities', 'grid', 'إدارة المستشفى'],
   ['manage-doctors', 'doctor', 'إدارة الأطباء'],
   ['admin-staff', 'users', 'إدارة الموظفين'],
@@ -212,13 +213,16 @@ const navs = [
 ];
 
 const allowed = {
-  doctor: ['dashboard', 'consultations', 'patients', 'record', 'encounter', 'appointments', 'ai', 'model', 'documents', 'doctor-reports', 'settings'],
+  doctor: ['dashboard', 'consultations', 'patients', 'record', 'encounter', 'appointments', 'ai', 'model', 'documents', 'doctor-reports', 'doctor-workspace', 'settings'],
   radiologist: ['documents'],
-  reception: ['dashboard', 'patients', 'appointments', 'reception-checkin', 'queue', 'reception-schedule', 'reception-reports', 'reception-file', 'reception-billing', 'reception-admissions', 'settings'],
-  patient: ['portal', 'appointments', 'patient-doctors', 'patient-reports', 'patient-attachments', 'patient-profile'],
+  reception: ['dashboard', 'patients', 'appointments', 'appointment-waitlist', 'reception-checkin', 'queue', 'reception-schedule', 'reception-reports', 'reception-file', 'reception-billing', 'reception-admissions', 'reception-services', 'settings'],
+  patient: ['portal', 'appointments', 'patient-doctors', 'patient-reports', 'patient-attachments', 'patient-profile',
+    'patient-services', 'patient-billing', 'patient-notices', 'patient-requests', 'patient-journey', 'appointment-waitlist',
+    'patient-family','patient-messages','patient-insurance','patient-care','patient-pay','patient-diagnostics',
+    'patient-emergency','patient-search','patient-onboarding'],
   admin: ['dashboard', 'admin-facilities', 'manage-doctors', 'admin-staff', 'admin-patients', 'admin-bookings',
     'admin-inventory', 'admin-diagnostics', 'admin-models', 'admin-reports', 'manage-reception', 'audit', 'settings',
-    'admin-archive', 'admin-billing', 'admin-patient', 'admin-doctor']
+    'admin-archive', 'admin-billing', 'admin-patient', 'admin-doctor', 'admin-patient-requests']
 };
 
 const patient = () => role === 'doctor' ? doctorPatients().find(p => p.id === selected) || doctorPatients()[0] :
@@ -227,8 +231,10 @@ const patient = () => role === 'doctor' ? doctorPatients().find(p => p.id === se
 const save = () => {
   try {
     localStorage.setItem(LOCAL_DATABASE_KEY, JSON.stringify(db));
+    return true;
   } catch {
     toast('تعذّر الحفظ التلقائي في المتصفح.');
+    return false;
   }
 };
 
@@ -237,10 +243,10 @@ function log(action, resource) {
     action,
     resource,
     role: roles[role],
-    ...(role === 'doctor' ? {actor:demoDoctor,recordedAt:new Date().toISOString()} : {}),
+    ...(role === 'doctor' ? {actor:currentDoctor(),recordedAt:new Date().toISOString()} : {}),
     time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) + ' · ' + new Date().toLocaleDateString('ar-EG')
   });
-  save();
+  return save();
 }
 
 function toast(text) {
@@ -638,36 +644,7 @@ function queue() {
 
 // Appointments Management View
 function appointments() {
-  const directory = bookingDirectory();
-  const list = role === 'patient' ? db.appointments.filter(a => a.patient === patient().id) : db.appointments;
-  if (role === 'patient') {
-    const dateInfo = value => {
-      const date = new Date(value+'T12:00:00');
-      if (Number.isNaN(date.getTime())) return {day:'—',month:'',label:value};
-      return {day:String(date.getDate()),month:date.toLocaleDateString('ar-EG',{month:'long'}),
-        label:date.toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric'})};
-    };
-    const upcoming = list.filter(a => canEditBooking(a) || a.status === 'تم تسجيل الوصول')
-      .sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
-    const upcomingIds = new Set(upcoming.map(a=>a.id));
-    const past = list.filter(a=>!upcomingIds.has(a.id)).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
-    const panel = (title, rows) => `<section class="card patient-bookings">
-      <div class="card-header"><h2>${title}</h2>${badge(String(rows.length),'teal')}</div>
-      <div class="card-body patient-booking-list">${rows.length ? rows.map(a=>{
-        const date=dateInfo(a.date), doctor=directory[a.doctor];
-        const actions = `data-id="${esc(a.id)}"`;
-        return `<article class="patient-booking-row ${a.status==='ملغي'?'is-cancelled':''}">
-          <time class="patient-booking-date" datetime="${esc(a.date)}"><strong>${esc(date.day)}</strong><span>${esc(date.month)}</span></time>
-          <div class="patient-booking-copy"><strong>${esc(a.doctor)}</strong><p>${esc(date.label)} · <bdi>${esc(a.time)}</bdi></p>
-            <small>${esc(a.type)}</small>${doctor ? `<small>${esc(doctor.specialty)} · ${esc(doctor.location)}</small>` : ''}</div>
-          <div class="patient-booking-actions">${badge(esc(a.status),a.status==='ملغي'?'gray':a.status==='بانتظار التأكيد'?'amber':'emerald')}
-            ${canEditBooking(a) ? button('تعديل الحجز','edit-booking','secondary small',actions) +
-              button('إلغاء الموعد','cancel-booking','danger small',actions) : ''}</div></article>`;
-      }).join('') : '<p class="patient-empty">لا توجد مواعيد في هذا القسم.</p>'}</div></section>`;
-    return pageHead('مواعيدي','تابع حالة الحجز ومواعيدك القادمة والسابقة.',
-      button(icon('plus')+' حجز موعد جديد','book','primary'),'بوابة المريض') +
-      panel('المواعيد القادمة والجارية',upcoming) + panel('المواعيد السابقة والملغاة',past);
-  }
+  const list = db.appointments;
   return `
     ${pageHead(
       role === 'patient' ? 'مواعيدي القادمة' : 'جدول المواعيد والمتابعات',
@@ -789,72 +766,74 @@ function modal(title, body, footer='') {
 
 function closeModal() {
   $('#modal-root').innerHTML = '';
+  doctorWorkClearImages();
   modalFocus?.focus();
 }
 
 // Appointment Booking Engine
-const morningClinicHours = ['09:00','09:30','10:00','10:30','11:00','11:30','12:00'];
-const middayClinicHours = ['10:00','10:30','11:00','11:30','12:00','12:30','13:00'];
-const afternoonClinicHours = ['13:00','13:30','14:00','14:30','15:00','15:30','16:00'];
+const defaultClinicHours = [
+  '08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30',
+  '12:00','12:30','13:00','13:30','14:00','14:30','15:00'
+];
 
 const additionalClinicDoctors = [
-  ['د. أحمد منصور','الباطنة العامة','استشاري الباطنة العامة','الأرضي',2,[0,2,4],morningClinicHours],
-  ['د. مريم عادل','القلب والأوعية الدموية','استشاري أمراض القلب والأوعية الدموية','الأول',5,[1,3,6],middayClinicHours],
-  ['د. يوسف حمدي','القلب والأوعية الدموية','أخصائي أمراض القلب','الأول',5,[0,2,4],afternoonClinicHours],
-  ['د. ندى إبراهيم','الأطفال','استشاري طب الأطفال','الأرضي',3,[0,2,4],middayClinicHours],
-  ['د. ريم حسن','النساء والتوليد','استشاري النساء والتوليد','الأول',6,[1,3,6],morningClinicHours],
-  ['د. كريم عادل','العظام','أخصائي جراحة العظام','الثاني',7,[0,2,4],afternoonClinicHours],
-  ['د. سلمى محمود','الجلدية','أخصائي الأمراض الجلدية','الثاني',8,[1,3,6],middayClinicHours],
-  ['د. ياسر عاطف','الأنف والأذن والحنجرة','استشاري الأنف والأذن والحنجرة','الثاني',9,[0,2,4],morningClinicHours],
-  ['د. هبة فؤاد','العيون','استشاري طب وجراحة العيون','الثاني',10,[1,3,6],afternoonClinicHours],
-  ['د. مصطفى شريف','الجهاز الهضمي والكبد','استشاري الجهاز الهضمي والكبد','الأول',11,[0,2,4],middayClinicHours],
-  ['د. آية سمير','المخ والأعصاب','أخصائي المخ والأعصاب','الثاني',12,[1,3,6],morningClinicHours],
-  ['د. حسام فتحي','المسالك البولية','استشاري جراحة المسالك البولية','الثاني',13,[0,2,4],afternoonClinicHours],
-  ['د. نهى علي','الجراحة العامة','استشاري الجراحة العامة','الأول',14,[1,3,6],middayClinicHours],
-  ['د. محمود ناصر','الكلى','أخصائي أمراض الكلى','الأول',15,[0,2,4],morningClinicHours],
-  ['د. إيمان صبري','الغدد الصماء والسكر','استشاري الغدد الصماء والسكر','الثاني',16,[1,3,6],afternoonClinicHours],
-  ['د. شيماء أمين','الروماتيزم والمناعة','أخصائي الروماتيزم والمناعة','الثاني',17,[0,2,4],middayClinicHours],
-  ['د. طارق هشام','الطب النفسي','استشاري الطب النفسي','الثالث',18,[1,3,6],afternoonClinicHours],
-  ['د. منى جابر','الأسنان','أخصائي طب وجراحة الأسنان','الثالث',19,[0,2,4],morningClinicHours],
-  ['د. عمر عبد الرحمن','العلاج الطبيعي والتأهيل','أخصائي العلاج الطبيعي والتأهيل','الثالث',20,[1,3,6],middayClinicHours],
-  ['د. ليلى كمال','طب الأسرة','أخصائي طب الأسرة','الأرضي',21,[0,2,4],afternoonClinicHours],
-  ['د. خالد أمين','أمراض الصدر','أخصائي أمراض الصدر','الأرضي',1,[1,4,6],afternoonClinicHours],
-  ['د. ياسمين فريد','الأورام الصدرية','أخصائي الأورام الصدرية','الأول',4,[0,2,3],afternoonClinicHours],
-  ['د. رانيا سالم','الباطنة العامة','أخصائي الباطنة العامة','الأرضي',2,[1,3,6],afternoonClinicHours],
-  ['د. زياد فوزي','الأطفال','أخصائي طب الأطفال','الأرضي',3,[1,3,6],afternoonClinicHours],
-  ['د. داليا أشرف','النساء والتوليد','أخصائي النساء والتوليد','الأول',6,[0,2,4],middayClinicHours],
-  ['د. عمرو عزت','العظام','استشاري جراحة العظام','الثاني',7,[1,3,6],morningClinicHours],
-  ['د. نورا سامي','الجلدية','استشاري الأمراض الجلدية','الثاني',8,[0,2,4],afternoonClinicHours],
-  ['د. رامي عادل','الأنف والأذن والحنجرة','أخصائي الأنف والأذن والحنجرة','الثاني',9,[1,3,6],middayClinicHours],
-  ['د. بسمة خالد','العيون','أخصائي طب وجراحة العيون','الثاني',10,[0,2,4],morningClinicHours],
-  ['د. عادل فتحي','الجهاز الهضمي والكبد','أخصائي الجهاز الهضمي والكبد','الأول',11,[1,3,6],afternoonClinicHours],
-  ['د. مروان عصام','المخ والأعصاب','استشاري المخ والأعصاب','الثاني',12,[0,2,4],afternoonClinicHours],
-  ['د. شريف عادل','المسالك البولية','أخصائي جراحة المسالك البولية','الثاني',13,[1,3,6],morningClinicHours],
-  ['د. هاني رشاد','الجراحة العامة','أخصائي الجراحة العامة','الأول',14,[0,2,4],morningClinicHours],
-  ['د. أمنية فؤاد','الكلى','استشاري أمراض الكلى','الأول',15,[1,3,6],middayClinicHours],
-  ['د. سامح نبيل','الغدد الصماء والسكر','أخصائي الغدد الصماء والسكر','الثاني',16,[0,2,4],morningClinicHours],
-  ['د. دعاء نجيب','الروماتيزم والمناعة','استشاري الروماتيزم والمناعة','الثاني',17,[1,3,6],afternoonClinicHours],
-  ['د. ميار حسن','الطب النفسي','أخصائي الطب النفسي','الثالث',18,[0,2,4],middayClinicHours],
-  ['د. إبراهيم عصام','الأسنان','أخصائي طب وجراحة الأسنان','الثالث',19,[1,3,6],afternoonClinicHours],
-  ['د. سحر كمال','العلاج الطبيعي والتأهيل','أخصائي العلاج الطبيعي والتأهيل','الثالث',20,[0,2,4],morningClinicHours],
-  ['د. سيف جمال','طب الأسرة','أخصائي طب الأسرة','الأرضي',21,[1,3,6],morningClinicHours]
+  ['د. أحمد منصور','الباطنة العامة','استشاري الباطنة العامة','الأرضي',2,[0,2,4]],
+  ['د. مريم عادل','القلب والأوعية الدموية','استشاري أمراض القلب والأوعية الدموية','الأول',5,[1,3,6]],
+  ['د. يوسف حمدي','القلب والأوعية الدموية','أخصائي أمراض القلب','الأول',5,[0,2,4]],
+  ['د. ندى إبراهيم','الأطفال','استشاري طب الأطفال','الأرضي',3,[0,2,4]],
+  ['د. ريم حسن','النساء والتوليد','استشاري النساء والتوليد','الأول',6,[1,3,6]],
+  ['د. كريم عادل','العظام','أخصائي جراحة العظام','الثاني',7,[0,2,4]],
+  ['د. سلمى محمود','الجلدية','أخصائي الأمراض الجلدية','الثاني',8,[1,3,6]],
+  ['د. ياسر عاطف','الأنف والأذن والحنجرة','استشاري الأنف والأذن والحنجرة','الثاني',9,[0,2,4]],
+  ['د. هبة فؤاد','العيون','استشاري طب وجراحة العيون','الثاني',10,[1,3,6]],
+  ['د. مصطفى شريف','الجهاز الهضمي والكبد','استشاري الجهاز الهضمي والكبد','الأول',11,[0,2,4]],
+  ['د. آية سمير','المخ والأعصاب','أخصائي المخ والأعصاب','الثاني',12,[1,3,6]],
+  ['د. حسام فتحي','المسالك البولية','استشاري جراحة المسالك البولية','الثاني',13,[0,2,4]],
+  ['د. نهى علي','الجراحة العامة','استشاري الجراحة العامة','الأول',14,[1,3,6]],
+  ['د. محمود ناصر','الكلى','أخصائي أمراض الكلى','الأول',15,[0,2,4]],
+  ['د. إيمان صبري','الغدد الصماء والسكر','استشاري الغدد الصماء والسكر','الثاني',16,[1,3,6]],
+  ['د. شيماء أمين','الروماتيزم والمناعة','أخصائي الروماتيزم والمناعة','الثاني',17,[0,2,4]],
+  ['د. طارق هشام','الطب النفسي','استشاري الطب النفسي','الثالث',18,[1,3,6]],
+  ['د. منى جابر','الأسنان','أخصائي طب وجراحة الأسنان','الثالث',19,[0,2,4]],
+  ['د. عمر عبد الرحمن','العلاج الطبيعي والتأهيل','أخصائي العلاج الطبيعي والتأهيل','الثالث',20,[1,3,6]],
+  ['د. ليلى كمال','طب الأسرة','أخصائي طب الأسرة','الأرضي',21,[0,2,4]],
+  ['د. خالد أمين','أمراض الصدر','أخصائي أمراض الصدر','الأرضي',1,[1,4,6]],
+  ['د. ياسمين فريد','الأورام الصدرية','أخصائي الأورام الصدرية','الأول',4,[0,2,3]],
+  ['د. رانيا سالم','الباطنة العامة','أخصائي الباطنة العامة','الأرضي',2,[1,3,6]],
+  ['د. زياد فوزي','الأطفال','أخصائي طب الأطفال','الأرضي',3,[1,3,6]],
+  ['د. داليا أشرف','النساء والتوليد','أخصائي النساء والتوليد','الأول',6,[0,2,4]],
+  ['د. عمرو عزت','العظام','استشاري جراحة العظام','الثاني',7,[1,3,6]],
+  ['د. نورا سامي','الجلدية','استشاري الأمراض الجلدية','الثاني',8,[0,2,4]],
+  ['د. رامي عادل','الأنف والأذن والحنجرة','أخصائي الأنف والأذن والحنجرة','الثاني',9,[1,3,6]],
+  ['د. بسمة خالد','العيون','أخصائي طب وجراحة العيون','الثاني',10,[0,2,4]],
+  ['د. عادل فتحي','الجهاز الهضمي والكبد','أخصائي الجهاز الهضمي والكبد','الأول',11,[1,3,6]],
+  ['د. مروان عصام','المخ والأعصاب','استشاري المخ والأعصاب','الثاني',12,[0,2,4]],
+  ['د. شريف عادل','المسالك البولية','أخصائي جراحة المسالك البولية','الثاني',13,[1,3,6]],
+  ['د. هاني رشاد','الجراحة العامة','أخصائي الجراحة العامة','الأول',14,[0,2,4]],
+  ['د. أمنية فؤاد','الكلى','استشاري أمراض الكلى','الأول',15,[1,3,6]],
+  ['د. سامح نبيل','الغدد الصماء والسكر','أخصائي الغدد الصماء والسكر','الثاني',16,[0,2,4]],
+  ['د. دعاء نجيب','الروماتيزم والمناعة','استشاري الروماتيزم والمناعة','الثاني',17,[1,3,6]],
+  ['د. ميار حسن','الطب النفسي','أخصائي الطب النفسي','الثالث',18,[0,2,4]],
+  ['د. إبراهيم عصام','الأسنان','أخصائي طب وجراحة الأسنان','الثالث',19,[1,3,6]],
+  ['د. سحر كمال','العلاج الطبيعي والتأهيل','أخصائي العلاج الطبيعي والتأهيل','الثالث',20,[0,2,4]],
+  ['د. سيف جمال','طب الأسرة','أخصائي طب الأسرة','الأرضي',21,[1,3,6]]
 ];
 
 const defaultBookingDoctors = {
   'د. سارة أحمد': {
     department:'أمراض الصدر', specialty:'استشاري أمراض الصدر', clinic:'عيادة أمراض الصدر',
     location:'مبنى العيادات الخارجية · الدور الأرضي · عيادة ١',
-    days:[0,2,3], hours:['09:00','09:30','10:00','10:30','11:00','11:30','12:00']
+    days:[0,2,3], hours:defaultClinicHours
   },
   'د. عمر خالد': {
     department:'الأورام الصدرية', specialty:'أخصائي الأورام الصدرية', clinic:'عيادة الأورام الصدرية',
     location:'مبنى العيادات الخارجية · الدور الأول · عيادة ٤',
-    days:[1,4,6], hours:['10:00','10:30','11:00','11:30','12:00','12:30','13:00']
+    days:[1,4,6], hours:defaultClinicHours
   },
-  ...Object.fromEntries(additionalClinicDoctors.map(([name,department,specialty,floor,room,days,hours]) => [name,{
+  ...Object.fromEntries(additionalClinicDoctors.map(([name,department,specialty,floor,room,days]) => [name,{
     department, specialty, clinic:'عيادة ' + department,
     location:'مبنى العيادات الخارجية · الدور ' + floor + ' · عيادة ' + room,
-    days, hours
+    days, hours:defaultClinicHours
   }]))
 };
 const bookingDayNames = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
@@ -897,20 +876,26 @@ function availableBookingTimes(doctor, patientId, date) {
   const weekday = new Date(date + 'T12:00:00').getDay();
   if (!schedule.days.includes(weekday)) return [];
   return schedule.hours.filter(time => futureBookingSlot(date,time) && !db.appointments.some(a =>
-    a.status !== 'ملغي' && a.date === date && a.time === time &&
-    (a.doctor === doctor || a.patient === patientId)));
+    !['ملغي','لم يحضر'].includes(a.status) && a.source !== 'walk-in' && a.date === date && a.time === time &&
+    ((a.scheduledDoctor || a.doctor) === doctor || a.patient === patientId)));
+}
+
+function availableBookingDays(doctor, patientId, limit) {
+  const date = new Date();
+  const days = [];
+  for (let offset = 0; offset < 28 && days.length < limit; offset++, date.setDate(date.getDate()+1)) {
+    const key = bookingDateKey(date);
+    if (availableBookingTimes(doctor,patientId,key).length) days.push(key);
+  }
+  return days;
 }
 
 function firstBookingDay(doctor, patientId) {
-  const date = new Date();
-  for (let offset = 0; offset < 28; offset++, date.setDate(date.getDate()+1)) {
-    const key = bookingDateKey(date);
-    if (availableBookingTimes(doctor,patientId,key).length) return key;
-  }
-  return '';
+  return availableBookingDays(doctor,patientId,1)[0] || '';
 }
 
-function book(appointmentId,preferredDoctor,preferredPatient,preferredSlot) {
+function book(appointmentId,preferredDoctor,preferredPatient,preferredSlot,waitId) {
+  const bookingSession=demoSession;
   const original = appointmentId ? db.appointments.find(a => a.id === appointmentId &&
     (role === 'reception' || a.patient === demoSession?.patientId)) : null;
   const patientId = role === 'patient' ? demoSession?.patientId : original?.patient || preferredPatient || selected;
@@ -924,9 +909,14 @@ function book(appointmentId,preferredDoctor,preferredPatient,preferredSlot) {
       Object.keys(directory).find(name => directory[name].active !== false));
   if (!selectedDoctor) { toast('لا يوجد أطباء متاحون للحجز حاليًا.'); return; }
   const initialDate = original?.date || preferredSlot?.date || firstBookingDay(selectedDoctor,patientId);
-  const types = original ? [...new Set([original.type,...consultationTypes].filter(Boolean))] : consultationTypes;
-  modal(original ? 'تعديل الحجز' : 'حجز موعد جديد بالعيادة', `
-    <form id="book-form" class="form-grid">
+  const review = role === 'patient' && !original && preferredSlot?.review;
+  const types = original ? [...new Set([original.type,...consultationTypes].filter(Boolean))] :
+    review && preferredSlot.followup ? ['متابعة',...consultationTypes] : consultationTypes;
+  modal(original ? 'تعديل الحجز' : review ? 'تأكيد الحجز' : 'حجز موعد جديد بالعيادة', `
+    <form id="book-form" class="form-grid${review?' patient-book-review':''}">
+      ${review?`<div class="patient-review-summary full"><p>${esc(selectedDoctor)} · ${esc(directory[selectedDoctor].department)}</p>
+        <strong>${patientShortDate(initialDate)} · <bdi>${esc(preferredSlot.time)}</bdi></strong>
+        <p>${esc(directory[selectedDoctor].location)}</p></div><div hidden>`:''}
       ${role !== 'patient' && !original ? `<label class="field full"><span>المريض *</span>
         <select name="patient" class="input">${db.patients.map(p => `<option value="${esc(p.id)}" ${p.id === patientId ? 'selected' : ''}>${esc(p.name)} (${esc(p.id)})</option>`).join('')}</select>
       </label>` : ''}
@@ -946,10 +936,14 @@ function book(appointmentId,preferredDoctor,preferredPatient,preferredSlot) {
       <label class="field full"><span>نوع الاستشارة</span>
         <select name="type" class="input">${types.map(type => `<option>${esc(type)}</option>`).join('')}</select>
       </label>
+      ${review?`</div><label class="field full"><span>سبب الزيارة (اختياري)</span>
+        <textarea class="input" name="reason" rows="3" maxlength="400">${esc(preferredSlot.reason||'')}</textarea></label>`:''}
       <p id="form-error" class="full" role="alert"></p>
+      ${!original&&!waitId&&['patient','reception'].includes(role)?
+        '<div class="full" id="book-waitlist" hidden><button type="button" class="button secondary">أضف إلى قائمة انتظار المواعيد</button></div>':''}
       <div class="booking-form-actions full">
-        <button class="button secondary" type="button" data-action="close">إلغاء</button>
-        <button class="button primary" type="submit">${original ? 'حفظ التعديل' : role === 'patient' ? 'إرسال طلب الحجز' : 'تأكيد حجز الموعد'}</button>
+        <button class="button secondary" type="button" data-action="close">${review?'رجوع':'إلغاء'}</button>
+        <button class="button primary" type="submit">${original ? 'حفظ التعديل' : review ? 'تأكيد الحجز' : role === 'patient' ? 'إرسال طلب الحجز' : 'تأكيد حجز الموعد'}</button>
       </div>
     </form>`);
 
@@ -958,25 +952,33 @@ function book(appointmentId,preferredDoctor,preferredPatient,preferredSlot) {
   const targetPatient = () => role === 'patient' ? demoSession?.patientId : original?.patient || form.elements.patient?.value;
   const error = form.querySelector('#form-error');
   const submit = form.querySelector('[type=submit]');
+  const waitlistButton = $('#book-waitlist');
+  waitlistButton?.querySelector('button').addEventListener('click',()=>appointmentWaitJoin({doctor:doctor.value,date:date.value,patient:targetPatient()}));
   const canKeepCurrent = () => canEditBooking(original) && doctor.value === original.doctor && date.value === original.date;
+  function showReviewConflict() {
+    patientBookingConflict(preferredDoctor,patientId,{...preferredSlot,reason:form.elements.reason.value},waitId);
+  }
   function refreshTimes(preferred = time.value) {
     const schedule = bookingDirectory()[doctor.value];
     const hours = availableBookingTimes(doctor.value,targetPatient(),date.value);
     const keepCurrent = canKeepCurrent();
-    form.querySelector('.booking-clinic-info').innerHTML = `
+    const usable = review ? hours.includes(preferredSlot.time) : hours.length || keepCurrent;
+    form.querySelector('.booking-clinic-info').innerHTML = schedule ? `
       <strong>${esc(schedule.clinic)}</strong><span>${esc(hospitalProfile().name)} · ${esc(schedule.branch || 'الفرع الرئيسي')}</span><span>${esc(schedule.location)}</span>
       <span>أيام العيادة: ${schedule.days.map(day => bookingDayNames[day]).join('، ')} · <bdi>${schedule.hours[0]}–${schedule.hours.at(-1)}</bdi></span>
-      <small>المكان والجدول بيانات للمعاينة.</small>`;
+      <small>المكان والجدول بيانات للمعاينة.</small>` : '';
     const options = hours.map(hour => `<option>${hour}</option>`).join('');
     time.innerHTML = keepCurrent
       ? '<option value="">الاحتفاظ بالموعد الحالي</option>' + options
       : options || '<option value="">لا توجد مواعيد متاحة</option>';
     time.required = !keepCurrent;
     if (hours.includes(preferred)) time.value = preferred;
-    submit.disabled = !hours.length && !keepCurrent;
-    error.textContent = hours.length || keepCurrent ? '' : 'اختار يوم تاني من أيام عيادة الطبيب.';
+    submit.disabled = !usable;
+    if (waitlistButton) waitlistButton.hidden = !schedule || !date.value || hours.length>0;
+    error.textContent = usable ? '' : review ? 'الموعد المختار لم يعد متاحًا. ارجع لاختيار وقت آخر.' : 'اختار يوم تاني من أيام عيادة الطبيب.';
   }
   refreshTimes(preferredSlot?.time);
+  if (review&&submit.disabled) { showReviewConflict();return; }
   form.addEventListener('change', event => {
     if (event.target === department) doctor.innerHTML = bookingDoctorOptions(department.value,doctor.value,original?.doctor);
     if (event.target === department || event.target === doctor || (event.target.name === 'patient' && !preferredSlot)) {
@@ -986,24 +988,59 @@ function book(appointmentId,preferredDoctor,preferredPatient,preferredSlot) {
   });
   form.addEventListener('submit', event => {
     event.preventDefault();
+    if (demoSession!==bookingSession || !allowAction('book',form)) return;
     const values = Object.fromEntries(new FormData(form));
     const id = targetPatient();
-    if (original && (original.patient !== id || !canEditBooking(original))) {
+    db = readLocalDatabase() || db;
+    const current = original && db.appointments.find(a=>a.id===original.id && a.patient===id);
+    if (original && (!canEditBooking(current) || current.doctor!==original.doctor ||
+      current.date!==original.date || current.time!==original.time)) {
       error.textContent = 'الحجز ده غير متاح للتعديل.';
       return;
     }
     const keepCurrent = values.time === '' && canKeepCurrent();
+    const wait = waitId && appointmentWaitRows().find(row=>row.id===waitId && row.patient===id &&
+      row.status==='waiting' && row.doctor===values.doctor && row.date===values.date);
+    if (waitId && !wait) { error.textContent='اختار طبيب وتاريخ الطلب، أو احجز من مواعيدي.';return; }
     if (!db.patients.some(p => p.id === id) || !types.includes(values.type) ||
+        (review && (values.time!==preferredSlot.time || values.date!==preferredSlot.date || values.doctor!==preferredDoctor || values.reason.length>400)) ||
         (!keepCurrent && !availableBookingTimes(values.doctor,id,values.date).includes(values.time))) {
+      if (review&&!availableBookingTimes(preferredDoctor,id,preferredSlot.date).includes(preferredSlot.time)) { showReviewConflict();return; }
       refreshTimes();
       error.textContent = 'الموعد المختار غير متاح. راجع الأوقات واختر موعد تاني.';
       return;
     }
+    const before = role==='patient'?structuredClone(db):null;
     const booking = {doctor:values.doctor,date:values.date,time:keepCurrent ? original.time : values.time,type:values.type};
-    if (original) Object.assign(original,booking);
-    else db.appointments.push({...booking,patient:id,id:'A' + Date.now(),status:role === 'patient' ? 'بانتظار التأكيد' : 'مؤكد'});
-    log(original ? 'تعديل موعد استشارة' : 'حجز موعد استشارة',id);
+    let newBookingId;
+    if (original) {
+      if (current.date!==booking.date||current.time!==booking.time||current.doctor!==booking.doctor) {
+        current.kioskToken=null;
+        current.precheck=null;
+        current.preparation=null;
+      }
+      Object.assign(current,booking);
+    }
+    else {
+      const createdAt = new Date().toISOString();
+      do {
+        const uuid = crypto.randomUUID();
+        newBookingId=role==='patient'?'BK-'+uuid.slice(0,8).toUpperCase():'A'+uuid;
+      } while (db.appointments.some(row=>row.id===newBookingId));
+      db.appointments.push({...booking, patient:id, id:newBookingId, createdAt,
+        ...(review && values.reason.trim() ? {reason:values.reason.trim()} : {}),
+        status:role === 'patient' ? 'بانتظار التأكيد' : 'مؤكد',
+        confirmedAt:role === 'patient' ? null : createdAt});
+      if (wait) Object.assign(wait,{status:'booked',booking:newBookingId,updatedAt:createdAt});
+    }
+    const saved=log(original ? 'تعديل موعد استشارة' : 'حجز موعد استشارة',id);
+    if (before&&!saved) {
+      db=before;
+      patientBookingSaveError(form);
+      return;
+    }
     closeModal();
+    if (newBookingId && role==='patient') history.pushState(null,'','#patient-journey/'+encodeURIComponent(newBookingId)+'/receipt');
     render();
     toast(original ? 'تم حفظ تعديل الحجز.' : role === 'patient' ? 'تم إرسال الحجز للاستقبال للتأكيد.' : 'تم تأكيد حجز الموعد.');
   });
@@ -1077,7 +1114,11 @@ document.addEventListener('click', e => {
   if (a === 'book') book();
   if (a === 'book-doctor') book(null,el.dataset.id);
   if (a === 'doctor-profile') showPatientDoctorProfile(el.dataset.id);
-  if (a === 'edit-booking' && el.dataset.id) book(el.dataset.id);
+  if (a === 'edit-booking' && el.dataset.id) {
+    if (role==='patient') patientReschedule(el.dataset.id);
+    else book(el.dataset.id);
+  }
+  if (a === 'full-reschedule' && role==='patient') book(el.dataset.id);
   if (a === 'record-tab') { activeTab = el.dataset.tab; render(); }
 
 
@@ -1124,6 +1165,10 @@ document.addEventListener('click', e => {
       book(null,el.dataset.doctor,undefined,{date:el.dataset.date,time:el.dataset.time});
     }
     if (a === 'reception-verify') verifyReceptionArrival(el.dataset.id);
+    if (a === 'reception-walk-in') receptionWalkIn(el.dataset.id);
+    if (a === 'reception-ticket') receptionArrivalTicket(el.dataset.id);
+    if (a === 'reception-transfer') receptionTransfer(el.dataset.id);
+    if (a === 'reception-no-show') receptionMarkNoShow(el.dataset.id);
     if (a === 'reception-queue-next') advanceReceptionQueue(el.dataset.id);
   }
 
@@ -1253,11 +1298,19 @@ document.addEventListener('click', e => {
   if (a === 'doctor-print' && $('.doctor-print-report')) window.print();
 
   if (role === 'reception' && ['confirm-appointment','arrive-appointment'].includes(a)) {
+    if (!receptionRefreshRecords()) return;
     const appointment = db.appointments.find(item => item.id === el.dataset.id);
     const confirm = a === 'confirm-appointment';
     if (!appointment || appointment.status !== (confirm ? 'بانتظار التأكيد' : 'مؤكد') ||
       (confirm ? appointment.date < receptionToday() : appointment.date !== receptionToday())) return;
+    if (!confirm && !$('#modal-root .modal')?.contains(el)) {
+      verifyReceptionArrival(appointment.id); return;
+    }
+    if (!confirm && receptionActiveArrival(appointment.patient)) {
+      toast('المريض موجود بالفعل في قائمة اليوم.'); return;
+    }
     appointment.status = confirm ? 'مؤكد' : 'تم تسجيل الوصول';
+    if (confirm) appointment.confirmedAt = new Date().toISOString();
     if (!confirm) {
       recordReceptionArrival(appointment);
       closeModal();
@@ -1269,20 +1322,44 @@ document.addEventListener('click', e => {
     }
     log(confirm ? 'تأكيد حجز من الاستقبال' : 'تسجيل وصول للموعد',appointment.id);
     render();
+    if (!confirm) receptionArrivalTicket(appointment.id);
     toast(confirm ? 'تم تأكيد الحجز.' : 'تم تسجيل الوصول · رقم الانتظار ' + appointment.queueNumber + '.');
   }
 
   if (a === 'cancel-booking') {
+    if (role==='patient') {
+      const row=patientServiceRecord(db.appointments,el.dataset.id);
+      if (!canEditBooking(row)) return;
+      modal('إلغاء الحجز؟',`<div class="patient-service-form">
+        <p><bdi>${esc(row.id)}</bdi> · ${esc(row.doctor)} · ${patientVisitDate(row.date,row.time)}</p>
+        <p class="patient-cancel-note">بعد الإلغاء يتحرر الوقت ويبطل رمز الوصول.</p>
+        ${adminSelect('سبب الإلغاء (اختياري)','cancelReason',patientCancelReasons.map(v=>[v,v||'اختر السبب']),'')}
+        ${button('تأكيد الإلغاء','confirm-cancel','danger',`data-id="${esc(row.id)}"`)}
+        ${button('الاحتفاظ بالحجز','close')}</div>`);
+      return;
+    }
     modal('إلغاء الموعد المحجوز', `
       <p style="font-size: 13px;">هل أنت متأكد من إلغاء هذا الموعد؟ سيتم تحديث حالته إلى "ملغي" في سجل المواعيد.</p>
     `, button('تأكيد الإلغاء', 'confirm-cancel', 'danger', `data-id="${el.dataset.id}"`) + button('الاحتفاظ بالموعد', 'close', 'secondary'));
   }
 
   if (a === 'confirm-cancel') {
+    db = readLocalDatabase() || db;
     const ap = db.appointments.find(x => x.id === el.dataset.id);
-    if (ap && ['مؤكد','بانتظار التأكيد'].includes(ap.status)) {
-      ap.status = 'ملغي';
-      log('إلغاء موعد محجوز', ap.patient);
+    if (!canEditBooking(ap) || (role==='patient' && ap.patient!==demoSession?.patientId)) {
+      closeModal();render();toast('الموعد غير متاح للإلغاء.');return;
+    }
+    const before = role==='patient'?structuredClone(db):null;
+    ap.status = 'ملغي';
+    ap.kioskToken = null;
+    ap.precheck = null;
+    ap.preparation = null;
+    const reason = $('.modal [name="cancelReason"]')?.value;
+    if (role==='patient'&&reason&&patientCancelReasons.includes(reason)) ap.cancelReason=reason;
+    const saved=log('إلغاء موعد محجوز',ap.patient);
+    if (before&&!saved) {
+      db=before;
+      return;
     }
     closeModal();
     render();
@@ -1290,6 +1367,7 @@ document.addEventListener('click', e => {
   }
 
   if (a === 'contact') {
+    if (role==='patient') { patientChangePhone();return; }
     const p = patient();
     modal('تعديل رقم هاتف المريض', `
       <form id="contact-form">

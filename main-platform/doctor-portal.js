@@ -1,15 +1,28 @@
 'use strict';
 
-const demoDoctor = 'د. سارة أحمد';
+const defaultDemoDoctor = 'د. سارة أحمد';
+const demoDoctorAccounts = new Map([
+  ['doctor@mnu333.demo',defaultDemoDoctor],
+  ['omar@mnu333.demo','د. عمر خالد'],
+  ['mariam@mnu333.demo','د. مريم عادل']
+]);
+const currentDoctor = () => demoSession?.role==='doctor'
+  ? (demoSession.doctorEmail ? demoDoctorAccounts.get(demoSession.doctorEmail) : defaultDemoDoctor)
+  : null;
 const doctorTitles = {
-  patients:'مرضاي', appointments:'جدولي', 'doctor-reports':'تقارير الزيارات', documents:'الفحوصات والمرفقات'
+  patients:'مرضاي', appointments:'جدولي', 'doctor-reports':'تقارير الزيارات', documents:'الفحوصات والمرفقات',
+  'doctor-workspace':'مساحة العمل السريري'
 };
-const doctorAppointments = () => db.appointments.filter(a => a.doctor === demoDoctor);
-const doctorCanAccess = id => Boolean(id && (db.patients.some(p => p.id === id && p.doctor === demoDoctor) ||
+const doctorAppointments = () => {
+  const doctor = currentDoctor();
+  return doctor ? db.appointments.filter(a => a.doctor === doctor) : [];
+};
+const doctorCanAccess = id => Boolean(id && currentDoctor() && (db.patients.some(p => p.id === id && p.doctor === currentDoctor()) ||
   doctorAppointments().some(a => a.patient === id && ['مؤكد','تم تسجيل الوصول','مكتمل'].includes(a.status)) ||
-  db.visits.some(v => v.patient === id && v.doctor === demoDoctor && v.approved)));
+  db.visits.some(v => v.patient === id && v.doctor === currentDoctor() && v.approved)));
 const doctorPatients = () => db.patients.filter(p => doctorCanAccess(p.id));
-const doctorVisits = id => db.visits.filter(v => v.patient === id && (v.approved || !v.doctor || v.doctor === demoDoctor)).slice().reverse();
+const doctorVisits = id => doctorCanAccess(id) ? db.visits.filter(v => v.patient === id &&
+  (v.approved || v.doctor === currentDoctor() || (!v.doctor && currentDoctor()===defaultDemoDoctor))).slice().reverse() : [];
 const doctorToday = () => bookingDateKey(new Date());
 const doctorDate = value => value ? healthArchiveDateLabel(value) : '—';
 const doctorNoPatients = () => empty('الملف غير متاح','اختر مريضًا من قائمة مرضاي.',link('مرضاي','patients','primary'));
@@ -59,7 +72,8 @@ function doctorDashboard() {
     .filter(([,v]) => v?.followup && v.followup >= today).sort((a,b) => a[1].followup.localeCompare(b[1].followup));
   const urgent = active.filter(a => doctorVisits(a.patient).some(v => !v.approved && v.appointmentId === a.id && v.severity === 'عاجلة'));
   const visible = [...new Set([...active,...daily])].sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
-  return `${pageHead('لوحة الطبيب',esc(doctorDate(today)),link('جدولي','appointments','secondary')+link('مرضاي','patients','primary'),'بوابة الأطباء')}
+  return `${pageHead('لوحة الطبيب',esc(doctorDate(today)),link('جدولي','appointments','secondary')+
+    link('مساحة العمل السريري','doctor-workspace','secondary')+link('مرضاي','patients','primary'),'بوابة الأطباء')}
     <div class="clinical-metrics">${metric('مرضى اليوم',new Set(daily.map(a=>a.patient)).size,'users','teal','حسب حجوزات اليوم')}
       ${metric('في الانتظار',waiting,'clock','amber','تم تسجيل وصولهم')}
       ${metric('قيد الكشف',active.length-waiting,'doctor','green','في قائمة الكشف')}
@@ -93,6 +107,9 @@ function bookingDateFromVisit(value) {
 }
 
 function doctorScheduleBooking(appointment) {
+  if (appointment.scheduledDoctor && appointment.doctor!==currentDoctor()) {
+    return '<div class="doctor-slot-booking gray"><small>تم تحويل الزيارة</small></div>';
+  }
   const person=db.patients.find(p=>p.id===appointment.patient);
   const canOpen=person && doctorCanAccess(person.id);
   const arrived=appointment.status==='تم تسجيل الوصول';
@@ -109,7 +126,7 @@ function doctorSchedulePage() {
   const today=doctorToday();
   const start=doctorScheduleDate || today;
   const startDate=new Date(start+'T12:00:00');
-  const clinician=bookingDirectory()[demoDoctor];
+  const clinician=bookingDirectory()[currentDoctor()];
   const days=Array.from({length:7},(_,index)=>{
     const date=new Date(startDate);
     date.setDate(date.getDate()+index);
@@ -117,7 +134,8 @@ function doctorSchedulePage() {
   });
   const end=days.at(-1).key;
   const selectedDay=days.some(day=>day.key===doctorScheduleDay)?doctorScheduleDay:start;
-  const appointments=doctorAppointments().filter(a=>a.date>=start && a.date<=end && a.status!=='ملغي');
+  const appointments=db.appointments.filter(a=>(a.scheduledDoctor||a.doctor)===currentDoctor() &&
+    a.date>=start && a.date<=end && a.status!=='ملغي' && a.source!=='walk-in');
   const hours=[...new Set([...(clinician?.hours||[]),...appointments.map(a=>a.time)])].filter(Boolean).sort();
   const slots=new Map();
   for (const appointment of appointments) {
@@ -127,7 +145,7 @@ function doctorSchedulePage() {
     slots.set(key,slot);
   }
   const dayAttr=day=>`data-schedule-day class="${day.key===selectedDay?'is-selected ':''}${day.key===today?'is-today':''}"`;
-  const heading=pageHead('جدولي',esc([demoDoctor,clinician?.specialty,clinician?.clinic,clinician?.location].filter(Boolean).join(' · ')),'','بوابة الأطباء');
+  const heading=pageHead('جدولي',esc([currentDoctor(),clinician?.specialty,clinician?.clinic,clinician?.location].filter(Boolean).join(' · ')),'','بوابة الأطباء');
   const toolbar=`<div class="doctor-calendar-toolbar">
     <div class="doctor-calendar-nav" aria-label="التنقل بين الأسابيع">
       <button type="button" class="button secondary small" data-schedule-shift="-7">${icon('arrowRight')} السابق</button>
@@ -176,12 +194,14 @@ function doctorRecordPage() {
   const orders = doctorRows(db.orders.filter(o => o.patient === p.id).slice().reverse().map(o =>
     doctorRow(o.type,`${esc(o.kind || 'فحص')} · ${esc(doctorDate(o.date))} · ${esc(o.priority || '—')} · <bdi>${esc(o.visit)}</bdi>`,badge(o.status || 'تم الطلب','teal'))));
   return pageHead('الملف الطبي الموحد',esc(p.name) + ' · <bdi>' + esc(p.id) + '</bdi>',
+      link('مساحة العمل لهذا الملف',doctorWorkRoute('tasks',p.id),'secondary')+
       link('فتح الكشف',doctorEncounterRoute(p),'primary'),'بوابة الأطباء') +
     patientBanner(p) +
     `<div class="doctor-columns">${doctorCard('السجل الزمني للزيارات',history)}${doctorCard('الملخص السريري',
       '<dl class="doctor-facts">'+facts.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v || 'غير مسجل')}</dd></div>`).join('')+'</dl>'+vitalSummary(p))}</div>` +
     doctorCard('طلبات الفحوصات',orders) +
-    doctorCard('النتائج والمرفقات',attachmentRows(p.id),button('إضافة مرفق','attachment-upload','secondary small'));
+    doctorCard('النتائج والمرفقات',attachmentRows(p.id),button('إضافة مرفق','attachment-upload','secondary small')+
+      `<button type="button" class="button secondary small" data-doctor-release="${esc(p.id)}">مشاركة نتيجة معتمدة</button>`);
 }
 
 function doctorReportsPage() {
@@ -300,11 +320,12 @@ function collectDoctorDraft(form, approving) {
 }
 
 function storeDoctorEncounter(data, approved, share, route) {
+  db=readLocalDatabase()||db;
   const context = doctorEncounterContext();
   if (!context || route !== location.hash) return;
   const {person:p,appointment} = context;
   const existing = doctorVisits(p.id).find(v=>!v.approved && (v.appointmentId || '') === (appointment?.id || ''));
-  const v = {...data,id:existing?.id || 'V'+crypto.randomUUID(),patient:p.id,doctor:demoDoctor,
+  const v = {...data,id:existing?.id || 'V'+crypto.randomUUID(),patient:p.id,doctor:currentDoctor(),
     appointmentId:appointment?.id,approved,date:new Date().toLocaleDateString('ar-EG')};
   if (approved) v.approvedAt = new Date().toISOString();
   if (appointment && !appointment.calledAt) appointment.calledAt = new Date().toISOString();
@@ -314,16 +335,23 @@ function storeDoctorEncounter(data, approved, share, route) {
     for (const [index,request] of v.requests.entries()) {
       if (!db.orders.some(o => o.visit === v.id && (o.requestIndex === index || (o.requestIndex == null && o.type === request.label)))) {
         db.orders.push({patient:p.id,visit:v.id,type:request.label,kind:request.kind,priority:request.priority,
-          notes:request.notes,requestIndex:index,status:'تم الطلب',date:v.date,doctor:demoDoctor});
+          notes:request.notes,requestIndex:index,status:'تم الطلب',date:v.date,doctor:currentDoctor()});
       }
     }
-    if (appointment) { appointment.status='مكتمل'; appointment.queueState='completed'; }
+    if (appointment) {
+      appointment.status='مكتمل';
+      appointment.queueState='completed';
+      appointment.completedAt=v.approvedAt;
+    }
     p.status = 'مكتملة';
     if (share) db.sharedReports.push({patient:p.id,visit:v.id,plan:v.plan,instructions:v.instructions,
-      medications:v.medications,date:v.date});
+      medications:v.medications,prescriptions:v.prescriptions,date:v.date});
   } else {
     p.status = 'قيد الزيارة';
-    if (appointment) appointment.queueState = 'in-consultation';
+    if (appointment) {
+      appointment.queueState = 'in-consultation';
+      appointment.consultationAt ||= new Date().toISOString();
+    }
   }
   log(approved?'اعتماد زيارة سريرية':'حفظ مسودة زيارة',v.id);
   closeModal();
@@ -390,7 +418,7 @@ function bindDoctorPortal(route) {
     form.querySelector('.doctor-error').textContent='';
     const hash = location.hash;
     if (!approving) { storeDoctorEncounter(data,false,false,hash); return; }
-    modal('مراجعة واعتماد الزيارة',`<p>سيُحفظ التقرير باسم ${esc(demoDoctor)} مع وقت الاعتماد.</p>
+    modal('مراجعة واعتماد الزيارة',`<p>سيُحفظ التقرير باسم ${esc(currentDoctor())} مع وقت الاعتماد.</p>
       <p class="doctor-plan-preview">${esc(data.plan)}</p>
       <label><input type="checkbox" id="doctor-share-plan"> مشاركة الخطة وتعليمات المتابعة والروشتة مع المريض</label>`,
       '<button class="button primary" id="doctor-approve-visit" type="button">تأكيد الاعتماد الطبي</button>' +
