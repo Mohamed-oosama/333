@@ -1,9 +1,11 @@
 'use strict';
 
 /**
- * MNU 333 — Modern Clinical Care Workspace & 7-Model AI Diagnostic System
+ * MNUH 333 — Modern Clinical Care Workspace & 7-Model AI Diagnostic System
  * Reimagined with Modern UI/UX Stack, Bento Layouts, and Medical Micro-interactions.
  */
+
+const HOSPITAL_BRAND_NAME = 'MNUH 333';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -215,7 +217,7 @@ const navs = [
 const allowed = {
   doctor: ['dashboard', 'consultations', 'patients', 'record', 'encounter', 'appointments', 'ai', 'model', 'documents', 'doctor-reports', 'doctor-workspace', 'settings'],
   radiologist: ['documents'],
-  reception: ['dashboard', 'patients', 'appointments', 'appointment-waitlist', 'reception-checkin', 'queue', 'reception-schedule', 'reception-reports', 'reception-file', 'reception-billing', 'reception-admissions', 'reception-services', 'settings'],
+  reception: ['dashboard', 'patients', 'appointments', 'appointment-waitlist', 'reception-checkin', 'queue', 'reception-schedule', 'reception-reports', 'reception-file', 'reception-billing', 'reception-admissions', 'reception-services', 'reception-tools', 'settings'],
   patient: ['portal', 'appointments', 'patient-doctors', 'patient-reports', 'patient-attachments', 'patient-profile',
     'patient-services', 'patient-billing', 'patient-notices', 'patient-requests', 'patient-journey', 'appointment-waitlist',
     'patient-family','patient-messages','patient-insurance','patient-care','patient-pay','patient-diagnostics',
@@ -258,7 +260,7 @@ function toast(text) {
 }
 
 // Layout Components
-const pageHead = (title, sub='', actions='', eyebrow='MNU 333 HEALTHCARE · CLINICAL WORKSPACE') => `
+const pageHead = (title, sub='', actions='', eyebrow=HOSPITAL_BRAND_NAME + ' HEALTHCARE · CLINICAL WORKSPACE') => `
   <div class="page-head">
     <div>
       <div class="eyebrow-tag">${icon('sparkler')} ${eyebrow}</div>
@@ -1143,7 +1145,7 @@ document.addEventListener('click', e => {
   }
 
   if (a === 'ai-architecture') {
-    modal('المخطط الهيكلي لمنظومة MNU 333 AI', `
+    modal('المخطط الهيكلي لمنظومة ' + HOSPITAL_BRAND_NAME + ' AI', `
       <div style="font-size: 12.5px; line-height: 1.8;">
         <p>تعتمد المنظومة على التوازي المتعدد والتجميع الموثق:</p>
         <ol style="padding-inline-start: 20px; margin-bottom: 16px;">
@@ -1162,7 +1164,7 @@ document.addEventListener('click', e => {
     if (a === 'reception-book-person') { closeModal(); book(null,null,el.dataset.id); }
     if (a === 'reception-print' && $('.reception-print-card, .reception-printable')) window.print();
     if (a === 'reception-book-slot' && availableBookingTimes(el.dataset.doctor,null,el.dataset.date).includes(el.dataset.time)) {
-      book(null,el.dataset.doctor,undefined,{date:el.dataset.date,time:el.dataset.time});
+      book(null,el.dataset.doctor,$('#reception-slot-patient')?.value||undefined,{date:el.dataset.date,time:el.dataset.time});
     }
     if (a === 'reception-verify') verifyReceptionArrival(el.dataset.id);
     if (a === 'reception-walk-in') receptionWalkIn(el.dataset.id);

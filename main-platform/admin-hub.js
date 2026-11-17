@@ -373,7 +373,7 @@ function adminReportOutput(key, format) {
       const safe=/^[\s]*[=+@-]/.test(text)||/^[\t\r\n]/.test(text)?"'"+text:text;
       return '"'+safe.replaceAll('"','""')+'"';
     };
-    adminDownload('mnu333-'+key+'.csv','\ufeff'+[headers,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n'),'text/csv;charset=utf-8');
+    adminDownload('mnuh333-'+key+'.csv','\ufeff'+[headers,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n'),'text/csv;charset=utf-8');
     log('تصدير تقرير',report[1]);
     return;
   }
@@ -432,6 +432,6 @@ document.addEventListener('click',event=>{
   if (action.dataset.action==='admin-backup') {
     const records={...db};
     delete records.credentials;
-    adminDownload('mnu333-admin-backup.json',JSON.stringify(records,null,2),'application/json');
+    adminDownload('mnuh333-admin-backup.json',JSON.stringify(records,null,2),'application/json');
   }
 });

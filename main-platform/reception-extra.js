@@ -101,6 +101,7 @@ const deskLogs = {
   calls:{title:'سجل الاتصالات',add:'تسجيل مكالمة',label:'موضوع المكالمة',states:['مفتوحة','تم الرد','مغلقة']},
   visitors:{title:'سجل الزوار',add:'تسجيل زائر',label:'اسم الزائر',states:['بالداخل','غادر']},
   tasks:{title:'مهام الاستقبال',add:'إضافة مهمة',label:'عنوان المهمة',states:['جديدة','قيد التنفيذ','مكتملة']},
+  complaints:{title:'الشكاوى',add:'تسجيل شكوى',label:'التصنيف',states:['جديدة','معيّنة','قيد المراجعة','بانتظار الرد','تم الحل','مغلقة']},
   documents:{title:'مراجعة المستندات الإدارية',add:'تسجيل مستند',label:'اسم المستند',states:['بانتظار المراجعة','تمت المراجعة','مطلوب استكمال']}
 };
 
@@ -130,7 +131,7 @@ function receptionDeskLogForm(collection,id) {
     if (id) {
       const current=deskRows(collection).find(item=>item.id===id);
       if (!current) return 'السجل غير متاح.';
-      deskUpdate(current,{state,notes});
+      deskUpdate(current,{state,notes,...(collection==='visitors'?{exitedAt:state==='غادر'?current.exitedAt||deskNow():null}:{})});
     } else {
       if (!label||label.length>100||((patient||requiresPatient)&&!receptionPerson(patient))) return 'راجع الاسم والملف.';
       deskAdd(collection,{label,patient,state,notes});

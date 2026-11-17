@@ -93,7 +93,7 @@ function exportPatientData(id) {
     appointments:own(db.appointments).map(({id,doctor,date,time,status,type})=>({id,doctor,date,time,status,type})),
     requests:own(db.patientRequests||[]), sharedReports:own(db.sharedReports),
     attachments:own(db.attachments).map(({title,kind,date,filename})=>({title,kind,date,filename}))};
-  adminDownload('MNU333-patient-data.json',JSON.stringify(data,null,2),'application/json;charset=utf-8');
+  adminDownload('MNUH333-patient-data.json',JSON.stringify(data,null,2),'application/json;charset=utf-8');
 }
 
 function savePatientPreference(control) {

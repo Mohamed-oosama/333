@@ -4,7 +4,7 @@
 // must be issued and validated by an authenticated service.
 function patientVerificationPage() {
   document.body.dataset.surface='patient-verify';
-  document.title='استعادة الدخول | MNU 333';
+  document.title='استعادة الدخول | '+hospitalProfile().name;
   $('#app').innerHTML=`<main class="patient-verification">
     ${logo()}
     <section class="patient-verification-card" id="patient-recovery-phone">
@@ -48,7 +48,7 @@ function patientVerificationPage() {
     challenge={id:person.id,code,expiresAt:Date.now()+300000,retryAt:Date.now()+45000,attempts:0};
     phoneStep.hidden=true;
     codeStep.hidden=false;
-    document.title='رمز التحقق | MNU 333';
+    document.title='رمز التحقق | '+hospitalProfile().name;
     $('#patient-code-status').textContent='رمز العرض '+code+' · يظهر هنا للتجربة المحلية';
     form.querySelector('fieldset').disabled=false;
     form.reset();
@@ -72,7 +72,7 @@ function patientVerificationPage() {
     codeStep.hidden=true;
     form.querySelector('fieldset').disabled=true;
     phoneStep.hidden=false;
-    document.title='استعادة الدخول | MNU 333';
+    document.title='استعادة الدخول | '+hospitalProfile().name;
     phoneInput.focus();
   });
   digits.forEach((input,i)=>{

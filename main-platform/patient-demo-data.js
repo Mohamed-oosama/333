@@ -31,7 +31,7 @@ function patientPreviewAttachment(meta) {
   ctx.textAlign='right';
   ctx.fillStyle='#fff';
   ctx.font='bold 34px Arial';
-  ctx.fillText('مستند تجريبي · MNU 333',850,70);
+  ctx.fillText('مستند تجريبي · '+hospitalProfile().name,850,70);
   ctx.fillStyle='#0f2f35';
   ctx.font='bold 33px Arial';
   ctx.fillText(sample[0],850,188);

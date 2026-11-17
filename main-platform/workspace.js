@@ -95,22 +95,22 @@ function clinicalShell() {
   $('#app').innerHTML = `<div class="app-shell hybrid-shell clinical-shell ${sidebarCollapsed?'side-collapsed':''}" data-role="${role}">
     <aside id="sidebar" class="clinical-sidebar" aria-label="القائمة الرئيسية">
       <a class="hospital-brand" href="#${home}">${hospitalLogo()}<span class="side-label"><strong>${esc(hospitalProfile().name)}</strong>${['admin','reception'].includes(role)?'':'<small>المستشفى والرعاية المتصلة</small>'}</span></a>
-      ${role === 'admin' ? adminNavigation() : `<div class="side-section side-label">${role==='reception'?'بوابة الاستقبال':'مساحة العمل'}</div>
+      ${role === 'admin' ? adminNavigation() : `${role==='reception'?'':'<div class="side-section side-label">مساحة العمل</div>'}
       <nav class="clinical-nav">${items.map(([r,i,t])=>`<a href="#${r}" data-nav="${r}" title="${t}">${icon(i)}<span class="side-label">${t}</span>${r==='ai'?'<b class="nav-count side-label">7</b>':''}</a>`).join('')}</nav>`}
       <div class="sidebar-bottom"><div class="sidebar-profile">${role==='admin'?icon('shield'):role==='reception'?icon('user'):personal?personAvatar(person):doctorPhoto()}<div class="side-label"><strong>${esc(name)}</strong><small>${role==='radiologist'?'قسم الأشعة':personal?'ملفك الصحي':role==='admin'?'إدارة المستشفى':role==='reception'?'فريق الاستقبال':'عيادة أمراض الصدر'}</small></div></div>
-        ${role==='reception'?'<a class="reception-settings" href="#settings">الإعدادات</a>':`<button class="sidebar-collapse" data-action="collapse-sidebar" aria-label="تصغير القائمة" aria-expanded="${!sidebarCollapsed}">${icon('chevron')}<span class="side-label">تصغير القائمة</span></button>`}
+        ${role==='reception'?'<a class="reception-settings" href="#reception-tools/search">البحث والإشعارات</a>':`<button class="sidebar-collapse" data-action="collapse-sidebar" aria-label="تصغير القائمة" aria-expanded="${!sidebarCollapsed}">${icon('chevron')}<span class="side-label">تصغير القائمة</span></button>`}
         <button class="sidebar-exit" data-action="logout">${icon('logout')}<span class="side-label">تسجيل الخروج</span></button>
       </div>
     </aside>
     <button class="sidebar-scrim" data-action="toggle-menu" aria-label="إغلاق القائمة"></button>
     <div class="workspace clinical-workspace">
-      <header class="clinical-topbar"><div class="topbar-heading"><button class="icon-btn menu-trigger" data-action="toggle-menu" aria-label="القائمة" aria-controls="sidebar" aria-expanded="false">${icon('menu')}</button><div><h1 id="workspace-title">${role==='radiologist'?'مساحة الأشعة':'مساحة الطبيب'}</h1><p id="workspace-subtitle">${dateLabel}</p></div></div>
+      <header class="clinical-topbar"><div class="topbar-heading"><button class="icon-btn menu-trigger" data-action="toggle-menu" aria-label="القائمة" aria-controls="sidebar" aria-expanded="false">${role==='reception'?'<span>القائمة</span>':icon('menu')}</button><div><h1 id="workspace-title">${role==='radiologist'?'مساحة الأشعة':'مساحة الطبيب'}</h1><p id="workspace-subtitle">${dateLabel}</p></div></div>
         <a class="clinical-top-brand" href="#${home}" aria-label="رئيسية ${esc(hospitalProfile().name)}">${hospitalLogo()}</a>
         ${role==='admin'?adminSearchBar():role==='radiologist'?'':`<form id="global-search" class="global-search">${icon('search')}<input aria-label="بحث عام عن مريض" placeholder="ابحث بالاسم، رقم الملف أو الهاتف" value=""><kbd>Ctrl K</kbd></form>`}
         <div class="topbar-tools"><span class="locale-label">العربية</span><button class="icon-btn notification-trigger" data-action="workspace-notifications" aria-label="الإشعارات" aria-expanded="false">${icon('bell')}${role!=='reception'&&!personal&&db.audit.length?'<span class="notification-dot"></span>':''}</button><div class="topbar-profile">${role==='admin'?icon('shield'):role==='reception'?icon('user'):personal?personAvatar(person):doctorPhoto()}<div><strong>${esc(name)}</strong><small>${role==='radiologist'?'قسم الأشعة':personal?'بوابة المريض':role==='admin'?'إدارة المستشفى':role==='reception'?'فريق الاستقبال':'طبيب أمراض الصدر'}</small></div></div></div>
       </header>
       <main id="main" tabindex="-1"></main>
-      <footer class="app-footer"><span>MNU 333 · الرعاية تبدأ بمعلومة واضحة</span><span>نسخة تجريبية · بيانات مصطنعة · النماذج غير متصلة</span></footer>
+      <footer class="app-footer"><span>${esc(hospitalProfile().name)} · الرعاية تبدأ بمعلومة واضحة</span><span>نسخة تجريبية · بيانات مصطنعة · النماذج غير متصلة</span></footer>
       <nav class="mobile-bottom" aria-label="التنقل السريع">${(role==='admin'?items.filter(i=>['dashboard','admin-facilities','admin-bookings','admin-reports'].includes(i[0])):role==='radiologist'||role==='reception'?items:items.filter(i=>['dashboard','patients','appointments','ai'].includes(i[0]))).slice(0,4).map(([r,i,t])=>`<a href="#${r}" data-nav="${r}">${icon(i)}<span>${t}</span></a>`).join('')}</nav>
     </div>
   </div>`;
@@ -123,7 +123,7 @@ function patientShell() {
   $('#app').innerHTML = `<div class="patient-shell hybrid-shell" data-role="patient">
     ${patientPortalHeader(p)}
     <main id="main" tabindex="-1"></main>
-    <footer class="patient-footer">MNU 333 · بيانات عرض محلية</footer>
+    <footer class="patient-footer">${esc(hospitalProfile().name)} · بيانات عرض محلية</footer>
     <nav class="mobile-bottom" aria-label="تنقل الهاتف">${patientPortalNav.map(([r,i,t,short],index)=>`<a href="#${r}" data-nav="${r}" aria-label="${t}">${icon(i)}<span data-patient-nav-label="${index}">${short || t}</span></a>`).join('')}</nav>
   </div>`;
 }
@@ -174,14 +174,21 @@ function bindWorkspace() {
   const route=$('#main')?.dataset.route;
   const titles={dashboard:role==='doctor'?'مساحة الطبيب':role==='admin'?'إدارة المستشفى':'لوحة العمل',consultations:'الكشف',patients:'إدارة المرضى',record:'ملف المريض',encounter:'الزيارة السريرية',appointments:role==='patient'?'مواعيدي':'المواعيد',ai:'النماذج السبعة',model:'مساحة التحليل',documents:role==='radiologist'?'مساحة الأشعة':'الفحوصات والمستندات',portal:'بوابة المريض','patient-reports':'تعليمات الطبيب','patient-attachments':'مرفقاتي','patient-profile':'بياناتي',settings:'الإعدادات',queue:'الاستقبال والفرز',audit:'سجل النشاط','manage-doctors':'إدارة الأطباء','manage-reception':'إدارة الاستقبال','admin-bookings':'متابعة الحجوزات'};
   const adminDashboard=role==='admin' && route==='dashboard';
-  if($('#workspace-title'))$('#workspace-title').textContent=adminDashboard?'إدارة المستشفى':(role==='reception'&&receptionTitles[route])||(role==='doctor'&&doctorTitles[route])||(role==='admin'&&adminTitles[route])||titles[route]||'MNU 333';
+  if($('#workspace-title'))$('#workspace-title').textContent=adminDashboard?'إدارة المستشفى':(role==='reception'&&receptionTitles[route])||(role==='doctor'&&doctorTitles[route])||(role==='admin'&&adminTitles[route])||titles[route]||hospitalProfile().name;
   if($('#workspace-subtitle'))$('#workspace-subtitle').textContent=adminDashboard?'':route==='dashboard'?dateLabel:'الرئيسية / '+((role==='reception'&&receptionTitles[route])||(role==='doctor'&&doctorTitles[route])||(role==='admin'&&adminTitles[route])||titles[route]||'مساحة العمل');
   $('#registry-doctor')?.addEventListener('change',e=>{registryDoctor=e.target.value;render();});
   if($('#global-search input'))$('#global-search input').value=query;
 }
 
 document.addEventListener('keydown',e=>{
-  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&$('#global-search input')){e.preventDefault();$('#global-search input').focus();}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+    if ($('.clinical-shell[data-role="reception"]')) {
+      e.preventDefault();
+      const search=$('#reception-global-search input');
+      if (search) search.focus();
+      else { receptionFocusSearch=true; location.hash='reception-tools/search'; }
+    } else if ($('#global-search input')) {e.preventDefault();$('#global-search input').focus();}
+  }
   if(e.key==='Escape'){$('.notifications-popover')?.remove();$('.notification-trigger')?.setAttribute('aria-expanded','false');$('#sidebar')?.classList.remove('open');}
 });
 

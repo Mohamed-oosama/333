@@ -1,6 +1,6 @@
 const receptionTitles = {
-  dashboard: 'لوحة الاستقبال', patients: 'المرضى', appointments: 'الحجوزات والجداول',
-  'reception-checkin': 'مكتب الاستقبال', queue: 'مكتب الاستقبال', 'reception-file':'ملف المريض',
+  dashboard: 'مكتب الاستقبال', patients: 'المرضى', appointments: 'المواعيد والجداول',
+  'reception-checkin': 'تسجيل وصول', queue: 'إدارة الطابور', 'reception-file':'ملف المريض',
   'reception-schedule': 'الحجوزات والجداول', 'reception-reports': 'التقارير',
   'reception-billing':'الحسابات والمدفوعات', 'reception-admissions':'الإقامة: الدخول والخروج',
   'reception-services':'خدمات الاستقبال'
@@ -51,26 +51,6 @@ function receptionRow(title, detail, actions = '') {
     '</strong><small>' + detail + '</small></div><div class="reception-actions">' + actions + '</div></div>';
 }
 
-function receptionStats(date) {
-  const appointments = db.appointments.filter(a => a.date === date);
-  const arrivals = db.appointments.filter(a => a.queueDate === date ||
-    (!a.queueDate && a.date === date && a.status === 'تم تسجيل الوصول'));
-  const patients = new Set(appointments.filter(a => a.status !== 'ملغي').concat(arrivals).map(a => a.patient));
-  const waitTimes = arrivals.filter(a => a.calledAt && a.arrivalAt)
-    .map(a => (Date.parse(a.calledAt) - Date.parse(a.arrivalAt)) / 60000)
-    .filter(minutes => Number.isFinite(minutes) && minutes >= 0);
-  const newPatients = db.patients.filter(p => p.registeredDate === date).length;
-  const present = arrivals.filter(a => a.status === 'تم تسجيل الوصول');
-  const waiting = present.filter(a => !a.queueState || a.queueState === 'waiting').length;
-  const completed = appointments.filter(a => a.status === 'مكتمل').length;
-  const cancelled = appointments.filter(a => a.status === 'ملغي').length;
-  const upcoming = appointments.filter(a => canEditBooking(a)).length;
-  const average = waitTimes.length ? Math.round(waitTimes.reduce((sum,n) => sum+n,0) / waitTimes.length) + ' د' : '—';
-  return {appointments, metrics: [['مرضى اليوم', patients.size], ['ملفات جديدة', newPatients],
-    ['داخل العيادات', new Set(present.map(a => a.patient)).size], ['حجوزات قادمة', upcoming], ['في الانتظار', waiting],
-    ['كشوف مكتملة', completed], ['مواعيد ملغاة', cancelled], ['متوسط الانتظار', average]]};
-}
-
 function receptionMetrics(metrics) {
   return '<div class="reception-metrics">' + metrics.map(([label, value]) =>
     '<div><span>' + label + '</span><strong>' + value + '</strong></div>').join('') + '</div>';
@@ -88,16 +68,6 @@ function receptionNotices() {
     count + ' · ' + label + '</a></div></div>').join('') || '<p class="quiet-empty">لا توجد تنبيهات تشغيلية.</p>';
 }
 
-function receptionPatientsPage() {
-  const people = db.patients.filter(p => receptionMatches(p, query));
-  return receptionPageHead('patients', 'ابحث عن الملف الإداري للمريض، أو سجّل مريضًا جديدًا.',
-    button(icon('plus') + ' تسجيل مريض', 'new-patient', 'primary')) +
-    receptionCard('سجل المرضى', '<label class="field reception-search"><span>البحث عن مريض</span>' +
-      '<input class="input" id="patient-search" type="search" placeholder="الاسم، رقم الملف، الهاتف أو رقم الحجز" value="' + esc(query) + '"></label>' +
-      receptionRows(people.map(p => receptionRow(esc(p.name), '<bdi>' + esc(p.id) + '</bdi> · ' + esc(p.status || 'مسجل'),
-        link('فتح الملف','reception-file/'+encodeURIComponent(p.id),'secondary small')))));
-}
-
 function receptionPatientCard(id) {
   const p = receptionPerson(id);
   if (!p) return;
@@ -106,23 +76,32 @@ function receptionPatientCard(id) {
     button('طباعة البطاقة', 'reception-print', 'primary') + button('إغلاق', 'close', 'secondary'));
 }
 
-function registerReceptionPatient() {
-  modal('تسجيل مريض جديد', '<form id="reception-register" class="form-grid">' +
+function receptionRegistrationForm() {
+  return '<form id="reception-register" class="form-grid reception-register-form">' +
     field('الاسم الكامل *','name','','text','required maxlength="120"') +
     field('الهاتف *','phone','','tel','required maxlength="24"') +
     field('تاريخ الميلاد *','birthDate','','date','required min="1900-01-01" max="' + receptionToday() + '"') +
     '<label class="field"><span>النوع *</span><select name="gender" class="input" required><option value="">اختر</option><option>ذكر</option><option>أنثى</option></select></label>' +
+    '<details class="full"><summary>بيانات إضافية (اختياري)</summary><div class="form-grid">' +
     field('البريد الإلكتروني','email','','email','maxlength="120"') +
     field('الجنسية','nationality','','text','maxlength="80"') +
     field('العنوان','address','','text','maxlength="200"') +
     field('اسم شخص للطوارئ','emergencyName','','text','maxlength="120"') +
     field('هاتف الطوارئ','emergencyPhone','','tel','maxlength="24"') +
     field('صلة القرابة','emergencyRelation','','text','maxlength="80"') +
-    field('شركة التأمين','insurer','','text','maxlength="120"') +
-    '<p class="full reception-empty">استخدم بيانات افتراضية في المعاينة المحلية.</p><p id="reception-register-error" class="full" role="alert"></p>' +
-    '<div class="full reception-actions"><button class="button primary" type="submit">إنشاء الملف</button>' +
-    '<button class="button secondary" type="button" data-action="close">إلغاء</button></div></form>');
-  $('#reception-register').addEventListener('submit', event => {
+    field('شركة التأمين','insurer','','text','maxlength="120"') + '</div></details>' +
+    '<p id="reception-register-error" class="form-error full" role="alert"></p>' +
+    '<div class="full reception-actions"><button class="button primary" type="submit">إنشاء الملف وطباعة البطاقة</button></div></form>';
+}
+
+function registerReceptionPatient() {
+  if (role==='reception') { location.hash='reception-tools/register';return; }
+  modal('تسجيل مريض جديد',receptionRegistrationForm(),button('إلغاء','close','secondary'));
+  bindReceptionRegistration();
+}
+
+function bindReceptionRegistration() {
+  $('#reception-register')?.addEventListener('submit', event => {
     event.preventDefault();
     if (!allowAction('new-patient',event.target)) return;
     db = readLocalDatabase() || db;
@@ -135,7 +114,11 @@ function registerReceptionPatient() {
       error.textContent = 'أدخل الاسم الكامل وأرقام هواتف صالحة.'; return;
     }
     const duplicate = db.patients.find(p => receptionPhone(p.phone) === values.phone);
-    if (duplicate) { error.textContent = 'الهاتف مرتبط بملف موجود (' + duplicate.id + '). ابحث عنه أولًا.'; return; }
+    if (duplicate) {
+      error.textContent = 'الهاتف مرتبط بملف موجود (' + duplicate.id + ').';
+      if (role==='reception') error.insertAdjacentHTML('beforeend',' '+link('افتح الملف','reception-file/'+encodeURIComponent(duplicate.id),'reception-text-link'));
+      return;
+    }
     const today = receptionToday();
     if (!healthArchiveDate(values.birthDate) || values.birthDate < '1900-01-01' || values.birthDate > today) {
       error.textContent = 'أدخل تاريخ ميلاد صالحًا.'; return;
@@ -146,17 +129,22 @@ function registerReceptionPatient() {
     const id = 'CL-' + (last + 1);
     db.patients.push({...values,id,age,registeredDate:today,status:'لم يصل',priority:'لم يُراجع',
       doctor:'لم يحدد بعد',allergy:'لم تُسجّل بيانات الحساسية',visit:'—',time:'—'});
+    if (!log('تسجيل مريض جديد',id)) {
+      db.patients.pop();
+      db.audit.shift();
+      error.textContent='تعذر حفظ الملف. حاول مجددًا.';
+      return;
+    }
     selected = id;
-    query = id;
-    log('تسجيل مريض جديد',id);
+    query = '';
     closeModal();
     if (role === 'admin') {
       location.hash = 'admin-patient/' + id;
       toast('تم إنشاء الملف ' + id + '.');
       return;
     }
-    if (location.hash === '#patients') render();
-    else location.hash = 'patients';
+    receptionRegistrationTerm='';
+    location.hash = 'reception-file/'+encodeURIComponent(id);
     receptionPatientCard(id);
     toast('تم إنشاء الملف ' + id + '.');
   });
@@ -336,6 +324,8 @@ function advanceReceptionQueue(id) {
 
 function bindReceptionPage() {
   bindReceptionScreens();
+  bindReceptionReference();
+  bindReceptionRegistration();
   $('#reception-booking-search')?.addEventListener('input',event => {
     const position = event.target.selectionStart;
     receptionBookingQuery = event.target.value;

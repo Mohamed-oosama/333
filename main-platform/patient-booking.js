@@ -65,7 +65,7 @@ function bindPatientBookingReceipt() {
   download.addEventListener('click',()=>{
     const image = document.createElement('a');
     image.href=canvas.toDataURL('image/png');
-    image.download='MNU333-'+canvas.dataset.id+'-QR.png';
+    image.download='MNUH333-'+canvas.dataset.id+'-QR.png';
     image.click();
   });
 }

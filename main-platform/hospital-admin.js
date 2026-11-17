@@ -1,7 +1,9 @@
 'use strict';
 
 function hospitalProfile() {
-  return {name:'MNU 333', address:'', phone:'', emergencyPhone:'', onCallPhone:'', ...db.hospitalProfile};
+  const {name, ...details} = db.hospitalProfile || {};
+  const displayName = typeof name === 'string' && name.trim() && !/^MNU\s*333?$/i.test(name.trim()) ? name : HOSPITAL_BRAND_NAME;
+  return {address:'', phone:'', emergencyPhone:'', onCallPhone:'', ...details, name:displayName};
 }
 
 function isHospitalAdmin() {

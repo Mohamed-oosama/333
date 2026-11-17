@@ -367,10 +367,10 @@ document.addEventListener('click',event=>{
     const clean=value=>String(value||'').replaceAll('\\','\\\\').replace(/\r?\n/g,'\\n').replace(/[;,]/g,'\\$&');
     const stamp=value=>value.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
     const start=a.date.replaceAll('-','')+'T'+a.time.replace(':','')+'00';
-    const contents=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//MNU 333//Appointments//AR','BEGIN:VEVENT',
+    const contents=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//'+HOSPITAL_BRAND_NAME+'//Appointments//AR','BEGIN:VEVENT',
       'UID:'+clean(a.id)+'@mnu333.demo','DTSTAMP:'+stamp(new Date()),'DTSTART;TZID=Africa/Cairo:'+start,
       'SUMMARY:'+clean('موعد · '+a.doctor),'LOCATION:'+clean(bookingDirectory()[a.doctor]?.location),
       'END:VEVENT','END:VCALENDAR',''].join('\r\n');
-    adminDownload('mnu333-appointment.ics',contents,'text/calendar;charset=utf-8');
+    adminDownload('mnuh333-appointment.ics',contents,'text/calendar;charset=utf-8');
   }
 });

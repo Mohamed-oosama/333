@@ -1,12 +1,13 @@
 'use strict';
 
 const receptionNavigation = [
-  ['dashboard','grid','لوحة الاستقبال'],['reception-checkin','clock','مكتب الاستقبال'],
-  ['patients','users','المرضى'],['appointments','calendar','الحجوزات والجداول'],
-  ['reception-billing','file','الحسابات والمدفوعات'],['reception-admissions','plus','الإقامة'],
-  ['reception-reports','pulse','التقارير'],['reception-services','grid','خدمات الاستقبال']
+  ['dashboard','grid','مكتب الاستقبال'],['patients','users','المرضى'],['appointments','calendar','المواعيد'],
+  ['reception-billing','file','الحسابات'],['reception-services/insurance','shield','التأمين'],
+  ['reception-admissions','plus','الإقامة'],['reception-services/calls','mail','التواصل'],
+  ['reception-reports','pulse','التقارير'],['settings','grid','الإدارة']
 ];
-const receptionNavParent = {queue:'reception-checkin','reception-file':'patients','reception-schedule':'appointments','appointment-waitlist':'appointments'};
+const receptionNavParent = {queue:'dashboard','reception-checkin':'dashboard','reception-tools':'dashboard',
+  'reception-file':'patients','reception-schedule':'appointments','appointment-waitlist':'appointments'};
 const receptionStates = {'مؤكد':'amber','مكتمل':'emerald','ملغي':'rose','لم يحضر':'gray','تم تسجيل الوصول':'sky','بانتظار التأكيد':'gray'};
 const receptionMoney = value => new Intl.NumberFormat('ar-EG',{maximumFractionDigits:2}).format(value)+' ج.م';
 const receptionGuard = () => role==='reception' && demoSession?.role==='reception' &&
@@ -16,7 +17,6 @@ function receptionRefreshRecords() {
   db=readLocalDatabase() || db;
   return true;
 }
-const receptionActions = () => button(icon('plus')+' تسجيل مريض','new-patient','primary')+button('حجز موعد','book','secondary');
 const receptionBadge = status => badge(esc(status),receptionStates[status] || 'gray');
 const receptionEmpty = text => `<p class="reception-empty">${text}</p>`;
 const receptionVisitsToday = () => db.appointments.filter(a=>(a.queueDate||a.date)===receptionToday() && (a.queueNumber||a.status==='تم تسجيل الوصول'));
@@ -30,34 +30,50 @@ let receptionDeskPatient='';
 
 function receptionOverview() {
   const today=receptionToday();
-  const {appointments,metrics}=receptionStats(today);
   const queue=receptionVisitsToday();
-  const summary=new Map(metrics);
-  const waiting=queue.filter(a=>a.status==='تم تسجيل الوصول'&&(!a.queueState||a.queueState==='waiting'));
-  const clinicRows=Object.entries(bookingDirectory()).map(([name,d])=>{
-    const active=appointments.filter(a=>(a.scheduledDoctor||a.doctor)===name&&!['ملغي','لم يحضر'].includes(a.status)&&a.source!=='walk-in');
-    return {name,clinic:d.clinic,count:active.length,capacity:d.hours.length,waiting:waiting.filter(a=>a.doctor===name).length};
-  }).filter(row=>row.count||row.waiting).sort((a,b)=>b.count-a.count);
-  const clinics=clinicRows.map(({name,clinic,count,capacity,waiting:queued})=>`<div class="reception-load">
-    <div><strong>${esc(clinic+' · '+name)}</strong><span>${count} من ${capacity} · ${queued} في الانتظار</span></div>
-    <progress value="${Math.min(count,capacity)}" max="${Math.max(capacity,1)}" aria-label="${esc(clinic)}"></progress></div>`).join('');
-  const emergency=waiting.filter(a=>receptionEmergency(a.patient)).length;
-  return receptionPageHead('dashboard','ملخص العمل اليومي · '+esc(receptionDate(today)),receptionActions()+link('تسجيل وصول','reception-checkin','secondary'))+
-    receptionMetrics(['مرضى اليوم','ملفات جديدة','داخل العيادات','في الانتظار','حجوزات قادمة'].map(label=>[label,
-      label==='داخل العيادات'?queue.filter(a=>a.status==='تم تسجيل الوصول'&&a.queueState==='in-consultation').length:
-      label==='حجوزات قادمة'?db.appointments.filter(canEditBooking).length:summary.get(label)]))+
-    receptionMetrics([['كشوف مكتملة',summary.get('كشوف مكتملة')],['مواعيد ملغاة',summary.get('مواعيد ملغاة')],['حالات طوارئ',adminLedgerRows('emergency').filter(e=>e.date===today).length]])+
-    '<div class="reception-grid">'+receptionCard('تنبيهات تحتاج إجراء',(emergency?receptionRow('حالات طوارئ بانتظار الكشف',String(emergency),link('عرض الدور','reception-checkin','secondary small')):'')+receptionNotices())+
-    receptionCard('الحجوزات والانتظار حسب العيادة',clinics||receptionEmpty('لا توجد حجوزات نشطة اليوم.'))+'</div>';
+  const stateOf=a=>a.status==='مكتمل'?'completed':a.queueState||'waiting';
+  const waiting=queue.filter(a=>a.status==='تم تسجيل الوصول'&&stateOf(a)==='waiting').sort(receptionQueueOrder);
+  const arrivals=db.appointments.filter(a=>a.date===today&&['مؤكد','بانتظار التأكيد'].includes(a.status)).sort(receptionBookingOrder);
+  const missingContacts=[...new Set([...waiting,...arrivals].map(a=>a.patient))].map(receptionPerson).filter(p=>p&&!p.emergencyPhone&&!p.emergencyContact?.phone);
+  const operationalNotices=receptionNotices();
+  return receptionPageHead('dashboard',esc(receptionDate(today))+' · بيانات تجريبية',
+    link('طوارئ','reception-tools/emergency','reception-danger')+link('تسجيل وصول','reception-checkin','secondary reception-desktop-action')+
+    button('حجز موعد','book','secondary reception-desktop-action')+link('+ مريض جديد','reception-tools/register','primary'))+
+    receptionSearchForm('reception-home-search','')+
+    receptionMetrics(Object.entries(receptionQueueStates).map(([state,{label}])=>[label,queue.filter(a=>stateOf(a)===state).length]))+
+    '<div class="reception-grid reception-home-grid">'+
+    receptionCard('قائمة الانتظار الحية','<p class="muted">الطوارئ أولًا ثم حسب وقت الوصول</p>'+
+      (waiting.length?receptionRows(waiting.map(a=>receptionRow(receptionVisitName(a),esc(a.doctor)+receptionElapsedWait(a),
+        button('نادِ','reception-queue-next','primary small',receptionIdAttr(a))))):receptionEmpty('لا يوجد مرضى في الانتظار.')),
+      link('إدارة الطابور','queue','reception-text-link'))+
+    receptionCard('حجوزات بانتظار الوصول','<p class="muted">مريض بلا حجز؟ '+link('سجّل زيارة بدون حجز','reception-tools/walk-in','reception-text-link')+'</p>'+
+      (arrivals.length?receptionRows(arrivals.map(a=>receptionRow(esc(receptionPerson(a.patient)?.name||a.patient),
+        '<bdi>'+esc(a.time)+'</bdi>',a.status==='مؤكد'?receptionArrivalLink(a):
+          button('تأكيد الحجز','confirm-appointment','secondary small',receptionIdAttr(a))))):receptionEmpty('لا توجد حجوزات بانتظار الوصول.')))+
+    receptionCard('تنبيهات',missingContacts.slice(0,3).map(p=>receptionRow('ملف ناقص · جهة الطوارئ','',
+      link(esc(p.id),'reception-file/'+encodeURIComponent(p.id),'reception-text-link'))).join('')+
+      operationalNotices,link('عرض الكل','reception-tools/search','reception-text-link'))+'</div>'+
+    '<nav class="reception-actions reception-utilities" aria-label="عمليات مكتب الاستقبال">'+
+    [['عمليات إضافية','reception-tools/operations'],['التحويل بين الأقسام','reception-tools/transfers'],
+      ['خريطة المستشفى','reception-tools/map'],['تسجيل ذاتي','check-in-kiosk']].map(([label,route])=>link(label,route,'secondary small')).join('')+'</nav>';
 }
 
-function receptionDesk(rawPatient) {
+const receptionQueueOrder=(a,b)=>Number(receptionEmergency(b.patient))-Number(receptionEmergency(a.patient))||
+  (a.queueNumber||0)-(b.queueNumber||0);
+const receptionVisitName=a=>esc(receptionPerson(a.patient)?.name||a.patient)+' · <bdi>'+esc(a.patient)+'</bdi>';
+const receptionElapsedWait=a=>{
+  const minutes=Math.floor((Date.now()-Date.parse(a.arrivalAt))/60000);
+  return minutes>=0?' · '+minutes+' د':'';
+};
+let receptionQueueDepartment='';
+
+function receptionDesk(rawPatient, queueOnly=false) {
   const today=receptionToday();
   if (receptionDeskPatient!==(rawPatient||'')) {
     receptionDeskPatient=rawPatient||'';
     receptionBookingQuery=receptionPerson(receptionDeskPatient)?.id||'';
   }
-  const term=receptionBookingQuery;
+  const term=queueOnly?'':receptionBookingQuery;
   const matches=a=>receptionSearchText(a.id)===receptionSearchText(term)||receptionMatches(receptionPerson(a.patient)||{id:a.patient},term,false);
   const queue=receptionVisitsToday();
   const transferRows=queue.filter(matches).flatMap(a=>(a.transfers||[]).slice().reverse().map(transfer=>
@@ -67,27 +83,37 @@ function receptionDesk(rawPatient) {
   const arrivals=db.appointments.filter(a=>a.date===today&&['بانتظار التأكيد','مؤكد'].includes(a.status)&&matches(a)).sort(receptionBookingOrder);
   const states=Object.entries(receptionQueueStates).map(([key,{label}])=>[label,queue.filter(a=>
     (a.status==='مكتمل'?'completed':a.queueState||'waiting')===key).length]);
-  const queueRows=queue.filter(matches).sort((a,b)=>Number(receptionEmergency(b.patient))-Number(receptionEmergency(a.patient))||
-    (a.queueNumber||0)-(b.queueNumber||0)).map(a=>{
+  const directory=bookingDirectory();
+  const queueRows=queue.filter(a=>matches(a)&&(!queueOnly||!receptionQueueDepartment||
+    directory[a.doctor]?.department===receptionQueueDepartment)).sort(receptionQueueOrder).map(a=>{
     const state=a.status==='مكتمل'?receptionQueueStates.completed:receptionQueueStates[a.queueState]||receptionQueueStates.waiting;
     const minutes=Math.max(0,Math.floor(((Date.parse(a.calledAt)||Date.parse(a.completedAt)||Date.now())-Date.parse(a.arrivalAt))/60000));
     return receptionRow(`<bdi class="reception-ticket ${receptionEmergency(a.patient)?'urgent':''}">${esc(a.queueNumber?'A'+a.queueNumber:'—')}</bdi> ${esc(receptionPerson(a.patient)?.name||a.patient)}`,
       esc([a.patient,receptionClinic(a),a.doctor,a.source==='walk-in'?'بدون حجز':'موعد محجوز',
         Number.isFinite(minutes)?'وقت الانتظار '+minutes+' د':''].filter(Boolean).join(' · ')),
-      badge(state.label,a.queueState==='in-consultation'?'emerald':a.queueState==='called'?'sky':'amber')+
+      badge(a.queueState==='waiting'&&minutes>=20?'انتظار طويل':state.label,
+        a.queueState==='in-consultation'||a.queueState==='called'?'emerald':minutes>=20?'amber':'sky')+
       (a.queueNumber?button('تذكرة الوصول','reception-ticket','secondary small',receptionIdAttr(a)):'')+
       (receptionCanTransfer(a)?button('تحويل لعيادة','reception-transfer','secondary small',receptionIdAttr(a)):'')+
-      (a.status==='تم تسجيل الوصول'&&state.next?button(state.action,'reception-queue-next','secondary small',receptionIdAttr(a)):''));
+      (a.status==='تم تسجيل الوصول'&&state.next?button(state.next==='called'?'نادِ':state.action,'reception-queue-next','primary small',receptionIdAttr(a)):''));
   });
+  if (queueOnly) return receptionPageHead('queue','الطابور اليومي حسب القسم',
+    link('مكتب الاستقبال','dashboard','secondary')+link('التحويلات','reception-tools/transfers','secondary'))+
+    '<div class="reception-chips" aria-label="تصفية الطابور حسب القسم">'+
+    ['',...new Set(queue.map(a=>directory[a.doctor]?.department).filter(Boolean))].map(department=>
+      `<button type="button" data-reception-queue-department="${esc(department)}" aria-pressed="${department===receptionQueueDepartment}">${esc(department||'كل الأقسام')}</button>`).join('')+'</div>'+
+    receptionCard('الطابور الحي',queueRows.length?receptionRows(queueRows):receptionEmpty('لا توجد تذاكر لهذا القسم اليوم.'))+
+    '<div class="reception-grid">'+receptionCard('الحالات',receptionMetrics(states))+
+    receptionCard('ضوابط','<p class="muted">يرتب الطابور حسب الوصول وتُعرض تنبيهات الانتظار الطويل بعد ٢٠ دقيقة. يحدد الطاقم الطبي أولوية الفرز.</p>')+'</div>';
   const matchedPatients=term?db.patients.filter(person=>receptionMatches(person,term)).slice(0,8):[];
   const walkInRows=matchedPatients.map(person=>receptionRow(esc(person.name),'<bdi>'+esc(person.id)+'</bdi>',
     button('تسجيل بدون حجز','reception-walk-in','secondary small',receptionIdAttr(person))));
-  return receptionPageHead('reception-checkin','تسجيل الوصول وقائمة الانتظار في شاشة واحدة · '+esc(receptionDate(today)),receptionActions())+
-    `<label class="field reception-search"><span>بحث موحد</span><input id="reception-booking-search" class="input" type="search" placeholder="الاسم، رقم الملف، الهاتف أو رقم الحجز" value="${esc(term)}"></label>`+
+  return receptionPageHead('reception-checkin','اختر حجز اليوم للتحقق من الهوية وإصدار تذكرة الدور',receptionBack()+link('بدون حجز','reception-tools/walk-in','secondary'))+
+    `<label class="field reception-search"><span>بحث موحد</span><input id="reception-booking-search" class="input" type="text" placeholder="الاسم، رقم الملف، الهاتف أو رقم الحجز" value="${esc(term)}"></label>`+
     receptionMetrics(states)+'<div class="reception-grid">'+receptionCard('حجوزات اليوم بانتظار الوصول',
       receptionRows(arrivals.map(a=>receptionRow(esc(receptionPerson(a.patient)?.name||a.patient),
         esc([a.patient,receptionClinic(a),a.doctor,a.time].join(' · ')),
-        a.status==='مؤكد'?button('تسجيل وصول','reception-verify','primary small',receptionIdAttr(a)):
+        a.status==='مؤكد'?receptionArrivalLink(a):
           button('تأكيد الحجز','confirm-appointment','secondary small',receptionIdAttr(a)))))+
       '<p class="reception-walk-in">مريض بدون حجز؟ ابحث عن ملفه هنا أو سجّل مريضًا جديدًا.</p>'+
       (walkInRows.length?receptionRows(walkInRows):''))+
@@ -105,7 +131,7 @@ function receptionBookingRow(a) {
 }
 
 function receptionTimetable(section) {
-  const schedule=section==='schedule';
+  const mode=['week','month','bookings'].includes(section)?section:'schedule';
   const date=receptionScheduleDate||receptionToday();
   const directory=bookingDirectory();
   const bookings=db.appointments.filter(a=>a.date===date&&(!receptionDepartment||directory[a.scheduledDoctor||a.doctor]?.department===receptionDepartment))
@@ -122,18 +148,42 @@ function receptionTimetable(section) {
         `data-doctor="${esc(name)}" data-date="${esc(date)}" data-time="${esc(time)}" aria-label="${esc('حجز '+name+' الساعة '+time)}"`);
       return `<span class="reception-slot unavailable"><bdi>${esc(time)}</bdi> · ${occupied?'محجوز':'غير متاح'}</span>`;
     }).join('');
-    return receptionCard(esc(name),`<p class="muted">${esc([d.clinic,d.location,d.days.map(day=>bookingDayNames[day]).join('، ')].join(' · '))}</p>
-      <div class="reception-actions">${slots}</div>`,badge(reserved.length+' حجز','gray'));
+    return receptionCard(esc(name+' · '+d.department),`<p class="muted">${esc([d.clinic,d.location].filter(Boolean).join(' · '))}</p>
+      <div class="reception-actions reception-time-slots">${slots}</div>`);
   }).join('');
-  const list=receptionCard('المواعيد المسجلة',receptionRows(bookings.map(receptionBookingRow)));
-  return receptionPageHead('appointments','تابع المواعيد واختر وقت الحجز من جدول الأطباء.',button(icon('plus')+' حجز موعد','book','primary')+
-    link('قائمة انتظار المواعيد','appointment-waitlist','secondary'))+
-    '<div class="reception-toolbar">'+adminTabs('appointments',[['','الحجوزات'],['schedule','جدول الأطباء']],schedule?'schedule':'')+
-    '<div class="reception-actions">'+field('التاريخ','date',date,'date','id="reception-schedule-date"')+
+  const list=receptionCard('المواعيد المسجلة',bookings.length?receptionRows(bookings.map(receptionBookingRow)):receptionEmpty('لا توجد مواعيد في اليوم المحدد.'));
+  const modes=[['schedule','يومي'],['week','أسبوعي'],['month','شهري'],['bookings','الحجوزات']];
+  const filters='<div class="reception-filters">'+field('التاريخ','date',date,'date','id="reception-schedule-date"')+
     adminSelect('التخصص','department',[['','كل التخصصات'],...new Set(Object.values(directory).map(d=>d.department))].map(v=>Array.isArray(v)?v:[v,v]),
-      receptionDepartment,'id="reception-department"')+'</div></div>'+
-    (schedule?'<div class="reception-grid reception-wide"><div class="reception-stack">'+(entries||receptionCard('جدول الأطباء',receptionEmpty('لا توجد عيادات مجدولة لهذا اليوم. اختار تاريخًا آخر.')))+
-      '</div>'+list+'</div>':list);
+      receptionDepartment,'id="reception-department"')+'</div>';
+  const daily='<div class="reception-stack">'+filters+(entries||
+    receptionCard('جدول الأطباء',receptionEmpty('لا توجد عيادات مجدولة لهذا اليوم. اختر تاريخًا آخر.')))+'</div>';
+  const booking=receptionCard('حجز جديد',receptionPersonSelect(false).replace('name="patient"','name="patient" id="reception-slot-patient"')+
+    '<p class="muted">اختر وقتًا متاحًا من جدول الأطباء لإكمال الحجز.</p>'+
+    button('فتح نموذج الحجز','book','primary full')+link('قائمة انتظار المواعيد','appointment-waitlist','secondary full'));
+  const calendar=mode==='week'||mode==='month';
+  return receptionReferenceHead(calendar?'تقويم المواعيد':receptionTitles.appointments,
+    calendar?esc(receptionDate(date)):'اختر الطبيب والوقت ثم أكّد الحجز',adminTabs('appointments',modes,mode))+
+    (calendar?filters+receptionCalendar(date,active,mode):mode==='bookings'?filters+list:receptionSplit(daily,booking)+list);
+}
+
+function receptionCalendar(date,doctors,mode) {
+  const first=new Date(date+'T12:00:00');
+  if (mode==='week') first.setDate(first.getDate()-first.getDay());
+  else first.setDate(1);
+  const count=mode==='week'?7:new Date(first.getFullYear(),first.getMonth()+1,0).getDate();
+  const days=Array.from({length:count},(_,index)=>{
+    const day=new Date(first);
+    day.setDate(first.getDate()+index);
+    const key=bookingDateKey(day);
+    const available=doctors.filter(([name])=>availableBookingTimes(name,null,key).length).length;
+    return `<button type="button" class="reception-calendar-day" data-reception-calendar-date="${esc(key)}">
+      <strong>${esc(healthArchiveDateLabel(key,{weekday:'long',day:'numeric'}))}</strong>
+      <span>${available?available+' عيادة متاحة':'لا أوقات متاحة'}</span></button>`;
+  });
+  return receptionCard(mode==='week'?'الأسبوع':'الشهر','<div class="reception-calendar">'+days.join('')+'</div>')+
+    receptionSplit(receptionCard('قائمة انتظار المواعيد',link('عرض القائمة وإضافة مريض','appointment-waitlist','secondary')),
+      receptionCard('ضوابط','<p class="muted">يُراجع توافر الوقت قبل تأكيد الحجز. تُحسب المواعيد وفق جداول الأطباء المسجلة.</p>'),'');
 }
 
 function receptionFile(id, tab) {
@@ -157,18 +207,17 @@ function receptionFile(id, tab) {
     bookings:()=>receptionCard('الحجوزات',receptionRows(appointments.map(receptionBookingRow))),
     invoices:()=>receptionCard('الفواتير',receptionInvoiceList(adminLedgerRows('invoices').filter(i=>i.patient===p.id)),link('الحسابات','reception-billing','secondary small'))
   };
-  return `<nav class="reception-breadcrumb" aria-label="مسار الصفحة"><a href="#patients">المرضى</a> / ${esc(p.name)}</nav>
-    <header class="reception-file-head card"><div>${personAvatar(p,true)}<div><h1>${esc(p.name)}</h1>
-      <p><bdi>${esc(p.id)}</bdi> · الهاتف ${esc(p.phone||'—')} · التأمين ${esc(p.insurer||'—')}</p></div></div>
+  return `<header class="reception-file-head card"><div><div><h2>${esc(p.name)}</h2>
+      <p><bdi>${esc(p.id)} · ${esc(p.phone||'—')}</bdi></p></div></div>
       <div class="reception-actions">${button('بطاقة المريض','reception-card','secondary',receptionIdAttr(p))}
       ${link('تسجيل وصول','reception-checkin/'+encodeURIComponent(p.id),'secondary')}
       ${button('تسجيل بدون حجز','reception-walk-in','secondary',receptionIdAttr(p))}
-      ${button(icon('plus')+' حجز موعد','reception-book-person','primary',receptionIdAttr(p))}</div></header>
-    <div class="reception-grid reception-wide"><div class="reception-stack">
+      ${button('حجز موعد','reception-book-person','primary',receptionIdAttr(p))}</div>
+      <div class="reception-callout"><strong>الخطوة التالية</strong><p>${next?esc(next.doctor+' · '+receptionDate(next.date)+' · '+next.time+' · '+next.status):'لا يوجد موعد قادم.'}</p></div></header>
+    <div class="reception-stack">
       ${adminTabs('reception-file/'+encodeURIComponent(p.id),[['','الزيارات'],['details','البيانات'],['bookings','الحجوزات'],['invoices','الفواتير']],active)}
-      ${panels[active]()}</div><div class="reception-stack">
-      ${receptionCard('جهة الطوارئ',info([['الاسم',p.emergencyName],['صلة القرابة',p.emergencyRelation],['الهاتف',p.emergencyPhone]]))}
-      ${receptionCard('حالة الملف',info([['آخر زيارة',receptionDate(last)],['الموعد القادم',next?receptionDate(next.date)+' · '+next.time:'—'],['الطبيب المتابع',p.doctor]]))}</div></div>`;
+      ${panels[active]()}
+      ${receptionCard('جهة الطوارئ',info([['الاسم',p.emergencyName],['صلة القرابة',p.emergencyRelation],['الهاتف',p.emergencyPhone],['آخر زيارة',receptionDate(last)]]))}</div>`;
 }
 
 function receptionInvoiceList(invoices) {
@@ -192,24 +241,25 @@ function receptionBilling() {
   const prices=adminLedgerRows('prices');
   return receptionPageHead('reception-billing','فواتير الكشف ورسوم الخدمات وتسجيل المدفوعات.',
     '<a class="button primary" href="#reception-billing" data-reception-focus="reception-invoice-form">+ فاتورة جديدة</a>'+
-    link('ورديات الخزينة','reception-services/cash','secondary'))+
+    link('الاستردادات','reception-services/refunds','secondary')+link('ورديات الخزينة','reception-services/cash','secondary'))+
     receptionMetrics([['المدفوع اليوم',receptionMoney(today)],['المبالغ المستحقة',receptionMoney(due.reduce((n,i)=>n+adminInvoiceBalance(i),0))],['فواتير غير مكتملة',due.length]])+
-    '<div class="reception-grid reception-wide">'+receptionCard('فاتورة جديدة',`<form id="reception-invoice-form" class="reception-form">
+    `<form id="reception-invoice-form" class="reception-grid reception-wide">`+receptionCard('فاتورة جديدة',`<div class="reception-form">
       ${adminSelect('المريض','patient',[['','اختر المريض'],...db.patients.map(p=>[p.id,p.name+' · '+p.id])],'','required')}
       <label class="field"><span>الحجز المرتبط (اختياري)</span><select class="input" name="appointment"><option value="">بدون حجز مرتبط</option></select></label>
       ${prices.length?adminSelect('خدمة من قائمة الأسعار','price',[['','إدخال خدمة يدويًا'],...prices.map(p=>[p.id,p.service+' · '+receptionMoney(p.amount)])],''):''}
       <div class="reception-service-lines"><div class="reception-service-line">
         ${field('الخدمة','service','','text','required maxlength="100"')}
         ${field('الرسوم','amount','','number','required min="0.01" max="10000000" step="0.01"')}</div></div>
-      <button type="button" class="button secondary small" data-reception-action="add-line">+ إضافة خدمة</button>
+      <button type="button" class="button secondary small" data-reception-action="add-line">+ إضافة خدمة</button></div>`)+
+    receptionCard('الملخص',`<div class="reception-form">
       <p class="reception-total"><strong>الإجمالي</strong><output id="reception-total">٠ ج.م</output></p>
       <fieldset class="reception-payment-methods"><legend>طريقة الدفع</legend>${receptionPaymentMethods.map((method,index)=>
         `<label><input type="radio" name="method" value="${method}" ${index===0?'checked':''}> <span>${method}</span></label>`).join('')}</fieldset>
       <div class="reception-service-line">${field('المدفوع','paid',0,'number','required min="0" step="0.01"')}
       <label class="field"><span>المتبقي</span><output class="input" id="reception-balance">٠ ج.م</output></label></div>
       <p role="alert" class="form-error" id="reception-invoice-error"></p>
-      <button type="submit" class="button primary full">حفظ الفاتورة وعرض الإيصال</button></form>`)+
-    receptionCard('آخر الفواتير',receptionInvoiceList(invoices))+'</div>';
+      <button type="submit" class="button primary full">حفظ الفاتورة وعرض الإيصال</button></div>`)+'</form>'+
+    receptionCard('آخر الفواتير',receptionInvoiceList(invoices));
 }
 
 function receptionReceipt(invoice, payment) {
@@ -271,16 +321,18 @@ function receptionAdmissions() {
     ${adminSelect('القسم والغرفة والسرير','bed',[['','اختر سريرًا متاحًا'],...free.map(b=>[b.id,receptionBedName(b)])],'','required')}
     <p class="form-error" role="alert"></p><button type="submit" class="button primary full">تأكيد الدخول</button></form>`:
     receptionEmpty(beds.length?'لا توجد أسرّة متاحة حاليًا.':'أضف أقسام الإقامة والأسرّة من إدارة المستشفى لتفعيل تسجيل الدخول.');
-  return receptionPageHead('reception-admissions','تسجيل دخول المرضى ونقلهم وخروجهم الإداري.')+
-    '<div class="reception-grid reception-admission-grid">'+receptionCard('تسجيل دخول مريض',admission)+
-    receptionCard('خريطة الأسرّة',bedMap?'<div class="reception-bed-map">'+bedMap+'</div>':receptionEmpty('لا توجد أسرّة مسجلة.'))+'</div>'+
-    receptionCard('المقيمون حاليًا',receptionRows(active.map(s=>{
+  const residents=receptionCard('المقيمون حاليًا',active.length?receptionRows(active.map(s=>{
       const balance=adminLedgerRows('invoices').filter(i=>i.patient===s.patient).reduce((sum,i)=>sum+adminInvoiceBalance(i),0);
       return receptionRow(esc(receptionPerson(s.patient)?.name||s.patient),
         esc(receptionBedName(beds.find(b=>b.id===s.bed))+' · '+(balance>0?'المستحق '+receptionMoney(balance):'لا يوجد رصيد مستحق')),
         (free.length?button('تحويل لقسم','reception-stay-transfer','secondary small',receptionIdAttr(s)):'')+
         button('خروج إداري','reception-stay-discharge','primary small',receptionIdAttr(s)));
-    })));
+    })):receptionEmpty('لا يوجد مقيمون بعد.'));
+  return receptionPageHead('reception-admissions','خريطة الأسرّة وتسجيل الدخول في مكان واحد',
+    link('القبول والخروج الإداري','reception-tools/admission','secondary'))+
+    receptionSplit('<div class="reception-stack">'+
+      receptionCard('الأسرّة',bedMap?'<div class="reception-bed-map">'+bedMap+'</div>':receptionEmpty('لا توجد أسرّة مسجلة.'))+
+      residents+'</div>',receptionCard('تسجيل دخول مريض',admission));
 }
 
 function receptionChangeStay(id,transfer) {
@@ -364,8 +416,9 @@ function receptionAnalytics() {
       <div style="--bar:${n/max*100}%"><b>${n}</b></div></div><small>${esc(healthArchiveDateLabel(date,{day:'numeric',month:'short'}))}</small></div>`).join('')}</div>`:
     receptionEmpty('اختر فترة صحيحة لا تتجاوز سنة.');
   return receptionPageHead('reception-reports','تحليل الحجوزات والزيارات والمدفوعات خلال فترة محددة.',
-    button('تصدير PDF','reception-print','secondary')+'<button class="button primary" data-reception-action="csv">CSV لـ Excel</button>')+
-    `<div class="reception-actions">${field('من','from',start,'date','id="reception-report-start"')}
+    link('تقارير تشغيلية','reception-reports/operations','secondary')+
+    button('PDF','reception-print','secondary')+'<button class="button primary" data-reception-action="csv">CSV لـ Excel</button>')+
+    `<div class="reception-filters">${field('من','from',start,'date','id="reception-report-start"')}
     ${field('إلى','to',end,'date','id="reception-report-end"')}
     ${adminSelect('العيادة','clinic',[['','كل العيادات'],...[...new Set(Object.values(bookingDirectory()).map(d=>d.clinic))].map(c=>[c,c])],
       receptionReportClinic,'id="reception-report-clinic"')}</div>
@@ -457,7 +510,9 @@ function bindReceptionScreens() {
 document.addEventListener('click',event=>{
   if (!receptionGuard()) return;
   const focus=event.target.closest('[data-reception-focus]');
-  if (focus) { event.preventDefault();document.getElementById(focus.dataset.receptionFocus)?.querySelector('select')?.focus(); }
+  if (focus) { event.preventDefault();document.getElementById(focus.dataset.receptionFocus)?.querySelector('select, input')?.focus(); }
+  const day=event.target.closest('[data-reception-calendar-date]');
+  if (day) { receptionScheduleDate=day.dataset.receptionCalendarDate;location.hash='appointments/schedule'; }
   const el=event.target.closest('[data-action]');
   const action=el?.dataset.action;
   if (action==='reception-invoice') receptionInvoiceDialog(el.dataset.id);
@@ -470,7 +525,7 @@ document.addEventListener('click',event=>{
       return '"'+(/^[\s]*[=+@-]/.test(text)?"'"+text:text).replaceAll('"','""')+'"';
     };
     const rows=[['الفترة',start,end],...metrics,[],['التاريخ','عدد المرضى'],...daily,[],['التخصص','الطبيب الأكثر استقبالًا','الزيارات'],...groups];
-    adminDownload('mnu333-reception.csv','\ufeff'+rows.map(row=>row.map(safe).join(',')).join('\r\n'),'text/csv;charset=utf-8');
+    adminDownload('mnuh333-reception.csv','\ufeff'+rows.map(row=>row.map(safe).join(',')).join('\r\n'),'text/csv;charset=utf-8');
     log('تصدير تقرير الاستقبال',start+' – '+end);
   }
 });

@@ -71,9 +71,9 @@ function loginPage(kind) {
 
   const email = mode === 'doctor' ? 'doctor@mnu333.demo' : mode + '@mnu333.demo';
   document.body.dataset.surface = 'login';
-  document.title = (isPatient ? 'دخول المريض' : 'دخول ' + roles[mode]) + ' | MNU 333';
+  document.title = (isPatient ? 'دخول المريض' : 'دخول ' + roles[mode]) + ' | '+hospitalProfile().name;
   $('#app').innerHTML = `
-    <div class="auth-page auth-login ${isPatient ? 'auth-patient' : 'auth-doctor'}">
+    <div class="auth-page auth-login ${mode==='reception'?'reception-login':isPatient?'auth-patient':'auth-doctor'}">
       <header class="auth-header">
         ${logo()}
         <nav class="portal-login-nav" aria-label="اختيار بوابة الدخول">${portalNavigation(portal.id, true)}</nav>
@@ -95,8 +95,8 @@ function loginPage(kind) {
         <section class="auth-form-area">
           <div class="login-form-wrap">
             <span class="section-kicker">${mode === 'radiologist' ? roles[mode] : portal?.title || roles[mode]}</span>
-            <h1>${staffEntry ? staffEntry.welcome : isPatient ? 'أهلًا بعودتك' : mode==='radiologist' ? 'أهلًا بطبيب الأشعة' : 'أهلًا دكتور'}</h1>
-            <p class="login-intro">${staffEntry ? portal.description : isPatient ? 'ادخل لمتابعة مواعيدك وتعليمات الرعاية.' : mode==='radiologist' ? 'أضف صور الأشعة وراجع مرفقات المريض.' : 'ادخل لمتابعة مرضاك وزياراتك.'}</p>
+            <h1>${mode==='reception'?esc(hospitalProfile().name):staffEntry ? staffEntry.welcome : isPatient ? 'أهلًا بعودتك' : mode==='radiologist' ? 'أهلًا بطبيب الأشعة' : 'أهلًا دكتور'}</h1>
+            <p class="login-intro">${mode==='reception'?'بوابة الاستقبال':staffEntry ? portal.description : isPatient ? 'ادخل لمتابعة مواعيدك وتعليمات الرعاية.' : mode==='radiologist' ? 'أضف صور الأشعة وراجع مرفقات المريض.' : 'ادخل لمتابعة مرضاك وزياراتك.'}</p>
             <form id="login-form">
               <div class="field">
                 <label for="login-identifier">${isPatient ? 'رقم الملف أو رقم الهاتف' : 'البريد المهني'}</label>
@@ -115,16 +115,17 @@ function loginPage(kind) {
               </div>
               <div class="login-form-meta"><label class="remember-me"><input type="checkbox" name="remember"><span>تذكرني</span></label>
                 ${isPatient ? '<a class="text-link" href="#login/patient/recovery">نسيت كلمة المرور؟</a>' :
-                  '<button type="button" class="text-link" data-action="login-help">نسيت كلمة المرور؟</button>'}</div>
+                  '<button type="button" class="text-link" data-action="login-help">'+(mode==='reception'?'مساعدة في الدخول':'نسيت كلمة المرور؟')+'</button>'}</div>
               <p id="login-error" class="form-error" role="alert"></p>
-              <button type="submit" class="button primary full login-submit">${isPatient ? 'دخول إلى بوابتي' : mode==='radiologist' ? 'دخول إلى مساحة الأشعة' : staffEntry ? 'دخول إلى مساحة العمل' : 'دخول إلى مساحة الطبيب'} <span class="login-submit-arrow">${icon('arrow')}</span></button>
+              <button type="submit" class="button primary full login-submit">${mode==='reception'?'دخول':isPatient ? 'دخول إلى بوابتي' : mode==='radiologist' ? 'دخول إلى مساحة الأشعة' : staffEntry ? 'دخول إلى مساحة العمل' : 'دخول إلى مساحة الطبيب'} <span class="login-submit-arrow">${icon('arrow')}</span></button>
             </form>
             ${isPatient ? '<p class="register-prompt">مريض جديد؟ <a href="#register">أنشئ حسابك</a></p>' : staffEntry ? '' : `<p class="login-note">${icon('info')} حساب طبيب جديد؟ يتم تفعيله من إدارة المستشفى.</p>`}
             <p class="login-note">${icon('info')} عرض تفاعلي محلي · استخدم بيانات غير حقيقية فقط.</p>
+            ${mode==='reception'?'<a class="reception-text-link reception-login-back" href="#home">العودة للرئيسية</a>':''}
           </div>
         </section>
       </main>
-      <footer class="auth-footer"><span>MNU 333 · رعاية متصلة بالإنسان</span><span>عرض تفاعلي · لا تُدخل بيانات طبية حقيقية</span></footer>
+      <footer class="auth-footer"><span>${esc(hospitalProfile().name)} · رعاية متصلة بالإنسان</span><span>عرض تفاعلي · لا تُدخل بيانات طبية حقيقية</span></footer>
     </div>`;
   $('#login-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -155,6 +156,10 @@ function loginPage(kind) {
     } catch {}
     role = loginRole;
     selected = isPatient ? person.id : 'CL-1024';
+    if (role==='reception') {
+      receptionGlobalTerm=''; receptionRegistrationTerm=''; receptionBookingQuery=''; receptionDeskPatient='';
+      receptionQueueDepartment=''; receptionFocusSearch=false;
+    }
     draft = {}; query = ''; dayQuery = ''; dayTab = 'overview';
     e.target.reset();
     location.hash = isPatient ? 'portal' : loginRole === 'radiologist' ? 'documents' : 'dashboard';
@@ -163,7 +168,7 @@ function loginPage(kind) {
 
 function registerPage() {
   document.body.dataset.surface = 'login';
-  document.title = 'تسجيل مريض جديد | MNU 333';
+  document.title = 'تسجيل مريض جديد | '+hospitalProfile().name;
   $('#modal-root').innerHTML = '';
   $('#app').innerHTML = `
     <div class="auth-page auth-patient register-page">
@@ -187,7 +192,7 @@ function registerPage() {
           <p class="register-prompt">لديك ملف؟ <a href="#login/patient">تسجيل الدخول</a></p>
         </section>
       </main>
-      <footer class="auth-footer"><span>MNU 333 · رعاية متصلة بالإنسان</span><span>عرض تفاعلي محلي · لا تُدخل بيانات طبية حقيقية</span></footer>
+      <footer class="auth-footer"><span>${esc(hospitalProfile().name)} · رعاية متصلة بالإنسان</span><span>عرض تفاعلي محلي · لا تُدخل بيانات طبية حقيقية</span></footer>
     </div>`;
   $('#register-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -255,7 +260,7 @@ function patientReports() {
 }
 
 function ai() {
-  return `${pageHead('سبعة نماذج، رؤية أشمل.','اختر الوحدة المناسبة للفحص. كل نتيجة مستقلة وتخضع لمراجعة الطبيب.','','MNU 333 · AI WORKSPACE')}
+  return `${pageHead('سبعة نماذج، رؤية أشمل.','اختر الوحدة المناسبة للفحص. كل نتيجة مستقلة وتخضع لمراجعة الطبيب.','',HOSPITAL_BRAND_NAME+' · AI WORKSPACE')}
     <div class="service-note">${icon('info')}<div><strong>النماذج غير متصلة حاليًا</strong><p>يمكنك استعراض المدخلات والمخرجات المطلوبة. لن تُنتج النسخة التجريبية تحليلًا طبيًا.</p></div></div>
     ${modelCards()}`;
 }
@@ -263,7 +268,7 @@ function ai() {
 function modelPage(id) {
   const m=models.find(x=>x.id===id)||models[0];
   activeModel=m.id;
-  return `${pageHead(m.name,m.en,link('النماذج السبعة','ai','secondary'),'MNU 333 · '+m.num)}
+  return `${pageHead(m.name,m.en,link('النماذج السبعة','ai','secondary'),HOSPITAL_BRAND_NAME+' · '+m.num)}
     <div class="model-context"><label for="model-patient">المريض</label><select id="model-patient">${doctorPatients().map(p=>`<option value="${p.id}" ${p.id===selected?'selected':''}>${esc(p.name)} · ${p.id}</option>`).join('')}</select><span class="badge amber">الخدمة غير متصلة</span></div>
     <div class="model-panels">
       <section class="card"><div class="card-header"><h2>مدخلات الفحص</h2>${icon(m.icon)}</div><div class="card-body"><p>${m.input}</p>
@@ -276,7 +281,7 @@ function modelPage(id) {
 }
 
 function settings() {
-  return `${pageHead('إعدادات مساحة العمل','معلومات تجربة MNU 333 وخيارات العرض.','','مساحة العمل')}
+  return `${pageHead('إعدادات مساحة العمل','معلومات تجربة '+HOSPITAL_BRAND_NAME+' وخيارات العرض.','','مساحة العمل')}
     <section class="card"><div class="card-header"><h2>عن هذه النسخة</h2><span class="badge teal">معاينة تفاعلية</span></div><div class="card-body"><p>البيانات مصطنعة وتُحفظ في متصفحك. بوابات الدخول توضح رحلة كل مستخدم، ولا تمثلان نظام تحقق حقيقيًا.</p><p>النماذج الطبية غير متصلة. لا تستخدم هذه النسخة لإدخال معلومات مرضى حقيقية.</p>${role==='admin'?`<div class="admin-quick-links">${link('إدارة بيانات المستشفى','admin-facilities','secondary')}${button('استعادة بيانات التجربة','reset','danger')}</div>`:''}</div></section>`;
 }
 
@@ -345,11 +350,12 @@ function render() {
     'patient-diagnostics':()=>patientHealthArchivePage('tests')
   });
   if (role === 'reception') Object.assign(pages, {
-    patients:receptionPatientsPage, appointments:()=>receptionTimetable(id),
-    'reception-checkin':()=>receptionDesk(id), queue:()=>receptionDesk(id),
-    'reception-schedule':()=>receptionTimetable('schedule'), 'reception-reports':receptionAnalytics,
-    'reception-file':()=>receptionFile(id,section), 'reception-billing':receptionBilling, 'reception-admissions':receptionAdmissions,
-    'reception-services':()=>receptionExtraPage(id)
+    patients:()=>receptionPatientWorkspace(), appointments:()=>receptionTimetable(id),
+    'reception-checkin':()=>receptionDesk(id), queue:()=>receptionDesk(id,true),
+    'reception-schedule':()=>receptionTimetable('schedule'), 'reception-reports':()=>id==='operations'?receptionOperationalReport():receptionAnalytics(),
+    'reception-file':()=>receptionPatientWorkspace(id,section), 'reception-billing':receptionBilling, 'reception-admissions':receptionAdmissions,
+    'reception-services':()=>receptionServiceWorkspace(id), 'reception-tools':()=>receptionToolsPage(id,section),
+    settings:()=>receptionAdministration(id)
   });
   if (role === 'doctor') Object.assign(pages, {
     patients:doctorPatientPage, record:doctorRecordPage, appointments:doctorSchedulePage, 'doctor-reports':doctorReportsPage,
@@ -369,15 +375,15 @@ function render() {
   $('#main').dataset.route=route;
   if (role==='patient') stopPatientMedia();
   $('#main').innerHTML=blockedRecord?doctorNoPatients():route==='model'?modelPage(id):(pages[route]||dashboard)();
-  if (role==='patient' && $('#main').dataset.location!==location.hash) {
+  if (['patient','reception'].includes(role) && $('#main').dataset.location!==location.hash) {
     $('#main').dataset.location=location.hash;
     $('#main').scrollTop=0;
   }
   const title=(role === 'reception' && receptionTitles[route])||(role === 'doctor' && doctorTitles[route])||(role === 'admin' && adminTitles[route])||shortNav[route]||({portal:'ملخص رعايتي','patient-reports':'تعليمات الطبيب','patient-profile':'حسابي','patient-attachments':'صحتي','patient-doctors':'الأطباء والتخصصات','appointment-waitlist':'قائمة انتظار المواعيد',record:'ملف المريض',encounter:'الزيارة',model:'النماذج السبعة'})[route];
-  document.title=(patientExtraTitles[route]||patientServiceTitles[route]||title||'مساحة الرعاية')+' | MNU 333';
+  document.title=(patientExtraTitles[route]||patientServiceTitles[route]||title||'مساحة الرعاية')+' | '+hospitalProfile().name;
   $$('[data-nav]').forEach(a=>{
     const active=a.dataset.nav===route || (role==='patient' && a.dataset.nav===patientPortalParents[route]) || (role==='admin' && a.dataset.nav===adminNavParent[route]) ||
-      (role==='reception' && a.dataset.nav===receptionNavParent[route]) ||
+      (role==='reception' && a.dataset.nav===receptionActiveNavigation(route,id)) ||
       (a.dataset.nav==='patients'&&['record','encounter'].includes(route)) || (a.dataset.nav==='ai'&&route==='model');
     a.classList.toggle('active',active);
     if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');

@@ -1,0 +1,364 @@
+/* Reception desk, sign-in, and kiosk */
+:is(.reception-login,.desk-kiosk,[data-role="reception"].clinical-shell),
+body:has([data-role="reception"].clinical-shell) #modal-root {
+  --reception-navy: #111f46;
+  --reception-sidebar: #111b40;
+  --reception-canvas: #eff2f8;
+  --reception-gold: #c99a2d;
+  --reception-border: #dbe2ef;
+  --reception-control: #cbd5e8;
+  --reception-muted: #596888;
+  --reception-blue: #e6ecfa;
+  --reception-warning: #fbefcc;
+  --reception-error: #f9dbd8;
+  --reception-success: #d4eee2;
+  --reception-red: #b12219;
+  --text: var(--reception-navy);
+  --muted: var(--reception-muted);
+  --primary: var(--reception-gold);
+  color: var(--reception-navy);
+}
+
+[data-role="reception"].clinical-shell:is(.side-collapsed,:not(.side-collapsed)) {
+  grid-template-columns: clamp(165px,14vw,220px) minmax(0,1fr);
+  height: 100dvh;
+}
+
+[data-role="reception"] .clinical-sidebar {
+  background: var(--reception-sidebar);
+  padding: 18px 10px;
+}
+
+[data-role="reception"] .hospital-brand { padding: 7px 8px 19px; }
+[data-role="reception"] .hospital-brand .brand-logo { width: 30px; height: 30px; }
+[data-role="reception"] .hospital-brand strong { font-size: 17px; white-space: nowrap; }
+[data-role="reception"] .clinical-nav { gap: 4px; }
+[data-role="reception"] .clinical-nav > a {
+  min-height: 46px;
+  color: #d6deef;
+  padding: 8px 10px;
+}
+[data-role="reception"] .clinical-nav > a .icon { display: none; }
+[data-role="reception"] .clinical-nav > a.active {
+  color: var(--reception-navy);
+  background: var(--reception-gold);
+  box-shadow: none;
+}
+
+[data-role="reception"] .sidebar-profile,
+[data-role="reception"] .app-footer,
+[data-role="reception"] .mobile-bottom { display: none; }
+[data-role="reception"] .sidebar-bottom { margin-top: auto; }
+[data-role="reception"] .reception-settings { min-height: 38px; }
+
+[data-role="reception"] .clinical-workspace #main,
+[data-role="reception"] .clinical-workspace #main:is([data-route="dashboard"],[data-route="patients"]) {
+  max-width: none;
+  gap: 14px;
+  padding: 26px clamp(16px,1.8vw,32px);
+  text-align: start;
+}
+
+[data-role="reception"] #main .page-head { margin: 2px 0 3px; align-items: center; }
+[data-role="reception"] #main .page-head h1 { font-size: clamp(24px,2.05vw,33px); font-weight: 800; }
+[data-role="reception"] #main .page-head .subtitle { color: var(--reception-muted); margin-top: 7px; }
+[data-role="reception"] #main .reception-card,
+[data-role="reception"] #main .patient-service-card,
+[data-role="reception"] #main .reception-file-head {
+  border-color: var(--reception-border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: none;
+  margin: 0;
+}
+[data-role="reception"] #main .reception-card .card-header {
+  gap: 8px;
+  align-items: baseline;
+  padding: 18px 16px 0;
+}
+[data-role="reception"] #main .reception-card .card-body { padding: 12px 16px 16px; }
+[data-role="reception"] #main .reception-card h3 { font-size: 15px; margin: 16px 0 8px; }
+[data-role="reception"] #main .muted,
+[data-role="reception"] #main .reception-empty { color: var(--reception-muted); }
+[data-role="reception"] #main .muted { margin-block: 0 10px; }
+[data-role="reception"] #main .reception-empty { padding: 5px 0; }
+
+[data-role="reception"] #main .button,
+.reception-login .button,
+.desk-kiosk .button {
+  min-height: 44px;
+  padding: 8px 15px;
+  border-radius: 8px;
+  font-weight: 700;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+[data-role="reception"] #main .button.small { min-height: 38px; padding: 5px 11px; }
+[data-role="reception"] #main .button.secondary {
+  color: var(--reception-navy);
+  border-color: var(--reception-control);
+  background: #fff;
+}
+[data-role="reception"] #main .button.secondary:hover { background: var(--reception-blue); }
+[data-role="reception"] #main .button.primary,
+.reception-login .button.primary,
+.desk-kiosk .button.primary,
+body:has([data-role="reception"].clinical-shell) #modal-root .button.primary {
+  color: var(--reception-navy);
+  background: var(--reception-gold);
+  border-color: var(--reception-gold);
+  box-shadow: none;
+}
+[data-role="reception"] #main .button.primary:hover,
+.reception-login .button.primary:hover,
+.desk-kiosk .button.primary:hover { background: #d6aa46; }
+[data-role="reception"] #main .button.reception-danger {
+  background: var(--reception-red);
+  border-color: var(--reception-red);
+  color: #fff;
+}
+[data-role="reception"] #main .button.reception-danger:hover { background: #931b15; }
+.reception-text-link {
+  color: var(--reception-navy);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+[data-role="reception"] #main .button.reception-text-link {
+  min-height: 28px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+}
+
+[data-role="reception"] #main .input,
+.reception-login .input,
+.desk-kiosk .input {
+  min-height: 44px;
+  border: 1px solid var(--reception-control);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--reception-navy);
+  box-shadow: none;
+  font: inherit;
+}
+[data-role="reception"] #main .field { margin: 0; min-width: 0; }
+[data-role="reception"] #main .field > span { color: var(--reception-muted); font-weight: 600; }
+[data-role="reception"] #main .form-error:empty,
+.reception-login .form-error:empty,
+.desk-kiosk :is(.form-error,.desk-kiosk-result):empty { display: none; }
+[data-role="reception"] :focus-visible,
+.reception-login :focus-visible,
+.desk-kiosk :focus-visible { outline: 2px solid #285599; outline-offset: 3px; }
+[data-role="reception"] .clinical-sidebar :focus-visible { outline-color: #fff; }
+
+[data-role="reception"] .reception-grid { gap: 14px; align-items: stretch; }
+[data-role="reception"] .reception-home-grid { grid-template-columns: minmax(0,1.45fr) minmax(0,1.45fr) minmax(0,1fr); }
+[data-role="reception"] .reception-wide { grid-template-columns: minmax(0,1.9fr) minmax(0,1fr); }
+[data-role="reception"] .reception-form-grid { grid-template-columns: minmax(0,1fr) minmax(0,1.9fr); }
+[data-role="reception"] .reception-admin-grid { grid-template-columns: minmax(0,1.85fr) repeat(2,minmax(0,1fr)); }
+[data-role="reception"] .reception-document-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+[data-role="reception"] .reception-upload {
+  display: grid;
+  gap: 8px;
+  padding: 15px;
+  margin-bottom: 12px;
+  border: 1px dashed var(--reception-control);
+  border-radius: 10px;
+  color: var(--reception-muted);
+  text-align: center;
+}
+[data-role="reception"] .reception-upload .input { max-width: 100%; }
+[data-role="reception"] .reception-metrics { display: grid; grid-auto-columns: minmax(0,1fr); grid-auto-flow: column; gap: 14px; }
+[data-role="reception"] .reception-metrics > div {
+  min-width: 0;
+  min-height: 100px;
+  gap: 8px;
+  padding: 16px;
+}
+[data-role="reception"] .reception-metrics strong { font-size: clamp(21px,2vw,30px); }
+[data-role="reception"] .reception-row { gap: 6px 10px; padding-block: 10px; }
+[data-role="reception"] :is(.reception-row-copy,.reception-row-copy strong,.reception-row-copy small) { min-width: 0; overflow-wrap: anywhere; }
+[data-role="reception"] .reception-row-copy small { color: var(--reception-muted); }
+[data-role="reception"] .reception-row:last-child { border-bottom: 1px solid #eef1f7; }
+[data-role="reception"] .reception-search-form {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 8px;
+  margin: 0 0 6px;
+}
+[data-role="reception"] #reception-home-search { margin: 0; }
+[data-role="reception"] #reception-home-search .input { min-height: 54px; }
+[data-role="reception"] .reception-filters { display: flex; flex-wrap: wrap; gap: 14px; }
+[data-role="reception"] .reception-filters > label { flex: 1 1 150px; }
+[data-role="reception"] .reception-filters .input { width: 100%; }
+[data-role="reception"] .reception-utilities { justify-content: start; }
+
+[data-role="reception"] .reception-facts { margin-bottom: 12px; }
+[data-role="reception"] .reception-facts > div,
+[data-role="reception"] .reception-patient-list > a {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 0;
+  border-bottom: 1px solid #e9eef6;
+  overflow-wrap: anywhere;
+}
+[data-role="reception"] .reception-patient-list > a { padding-inline: 8px; color: var(--reception-navy); }
+[data-role="reception"] .reception-patient-list > a[aria-current],
+[data-role="reception"] .reception-patient-list > a:hover { background: #f2f5fc; border-radius: 6px; }
+[data-role="reception"] .reception-patient-list small { display: block; color: var(--reception-muted); }
+[data-role="reception"] .reception-file-head { gap: 10px; }
+[data-role="reception"] .reception-file-head h2 { margin: 0; font-size: clamp(20px,2vw,30px); }
+[data-role="reception"] .reception-file-head .reception-callout { flex: 1 0 100%; margin: 0; }
+[data-role="reception"] .reception-callout {
+  background: var(--reception-blue);
+  padding: 14px;
+  border-radius: 10px;
+  margin: 10px 0 14px;
+  max-width: 100%;
+}
+[data-role="reception"] .reception-callout p { margin: 4px 0 0; }
+[data-role="reception"] .reception-callout.warning { background: var(--reception-warning); }
+[data-role="reception"] .reception-callout.danger { background: var(--reception-error); }
+[data-role="reception"] .reception-steps,
+[data-role="reception"] .reception-map { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
+[data-role="reception"] .reception-steps > span,
+[data-role="reception"] .reception-map > div,
+[data-role="reception"] .reception-calendar-day {
+  border: 1px solid var(--reception-border);
+  background: #fff;
+  color: var(--reception-navy);
+  border-radius: 11px;
+  padding: 12px;
+}
+[data-role="reception"] .reception-steps > span[aria-current] { border-color: var(--reception-gold); font-weight: 800; }
+[data-role="reception"] .reception-map > div { background: var(--reception-blue); }
+[data-role="reception"] .reception-map small { display: block; }
+[data-role="reception"] .reception-register-form summary { cursor: pointer; padding-block: 7px; }
+[data-role="reception"] .reception-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+[data-role="reception"] #main .badge {
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--reception-blue);
+  color: var(--reception-navy);
+  white-space: normal;
+}
+[data-role="reception"] #main .badge.amber { background: var(--reception-warning); }
+[data-role="reception"] #main .badge.emerald { background: var(--reception-success); }
+[data-role="reception"] #main .badge.rose { background: var(--reception-error); }
+[data-role="reception"] :is(.reception-chips button,.page-head .admin-tabs a),
+[data-role="reception"] #main .reception-time-slots .reception-slot {
+  border: 0;
+  border-radius: 999px;
+  background: var(--reception-blue);
+  color: var(--reception-navy);
+  font: inherit;
+  min-height: 38px;
+  padding: 5px 11px;
+}
+[data-role="reception"] #main .reception-time-slots .unavailable { color: var(--reception-muted); background: #e9ebef; }
+[data-role="reception"] :is(.reception-chips button[aria-pressed="true"],.page-head .admin-tabs a[aria-current]),
+[data-role="reception"] #main .reception-time-slots .button:hover { background: var(--reception-gold); color: var(--reception-navy); }
+[data-role="reception"] .page-head .admin-tabs { border: 0; }
+[data-role="reception"] .reception-calendar { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 8px; }
+[data-role="reception"] .reception-calendar-day { text-align: start; font: inherit; min-width: 0; }
+[data-role="reception"] .reception-calendar-day span { display: block; color: var(--reception-muted); font-size: 12px; }
+[data-role="reception"] .reception-calendar-day:hover { background: var(--reception-blue); }
+[data-role="reception"] .reception-ticket-number { margin: 8px 0 18px; font-size: 26px; font-weight: 800; }
+[data-role="reception"] .reception-payment-methods label:has(:checked) { color: var(--reception-navy); background: var(--reception-gold); }
+[data-role="reception"] .reception-bed.occupied { color: var(--reception-navy); background: #fff; }
+[data-role="reception"] .reception-bed.maintenance { border-color: #8f99aa; background: #fff; }
+[data-role="reception"] .reception-bed.reserved { background: #fff; }
+
+.reception-login.auth-page,
+.desk-kiosk { min-height: 100dvh; background: var(--reception-canvas); }
+.reception-login.auth-page .auth-layout {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 100dvh;
+  padding: 22px 16px;
+  grid-template-columns: minmax(0,1fr);
+}
+.reception-login :is(.auth-header,.auth-story,.auth-footer,.section-kicker,.login-submit-arrow) { display: none; }
+.auth-page.auth-login.reception-login .auth-form-area {
+  width: min(100%,405px);
+  padding: 0;
+  border: 1px solid var(--reception-border);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--reception-navy);
+}
+.reception-login .login-form-wrap { width: 100%; max-width: none; padding: 28px; }
+.reception-login .login-form-wrap #login-form { max-width: none; }
+.reception-login .login-form-wrap h1 { color: var(--reception-navy); font-size: 28px; }
+.reception-login :is(.login-intro,.login-note,.login-form-meta) { color: var(--reception-muted); }
+.reception-login .login-input-wrap > .icon { color: var(--reception-muted); }
+.reception-login .login-form-wrap .login-note { margin-bottom: 8px; }
+.reception-login-back { font-size: 13px; }
+.desk-kiosk .desk-kiosk-inner {
+  width: min(100%,560px);
+  padding: clamp(22px,4vw,35px);
+  border-color: var(--reception-border);
+  border-radius: 12px;
+  text-align: center;
+}
+.desk-kiosk .input { min-height: 62px; text-align: center; }
+.desk-kiosk .button { min-height: 56px; font-size: 18px; }
+
+@media (max-width: 1050px) {
+  [data-role="reception"] .reception-home-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  [data-role="reception"] .reception-home-grid > :last-child { grid-column: 1/-1; }
+  [data-role="reception"] .reception-calendar { grid-template-columns: repeat(auto-fit,minmax(87px,1fr)); }
+}
+
+@media (min-width: 701px) and (max-width: 900px) {
+  [data-role="reception"].clinical-shell:is(.side-collapsed,:not(.side-collapsed)) { grid-template-columns: 100px minmax(0,1fr); }
+  [data-role="reception"] #sidebar.clinical-sidebar { position: static; width: auto; height: auto; visibility: visible; transform: none; }
+  [data-role="reception"] .hospital-brand { display: grid; justify-content: center; justify-items: center; gap: 3px; padding-inline: 0; }
+  [data-role="reception"] .hospital-brand strong { font-size: 13px; }
+  [data-role="reception"] .clinical-nav > a { justify-content: center; text-align: center; font-size: 12px; min-height: 46px; }
+  [data-role="reception"] .sidebar-exit { padding-inline: 3px; justify-content: center; }
+  [data-role="reception"] .sidebar-exit > .icon { display: none; }
+  [data-role="reception"] .clinical-workspace .clinical-topbar { display: none; }
+  [data-role="reception"] #main .reception-home-grid { grid-template-columns: minmax(0,1fr); }
+  [data-role="reception"] #main .reception-home-grid > :last-child { grid-column: auto; }
+  [data-role="reception"] #main .reception-document-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  [data-role="reception"] #main .reception-document-grid > :last-child { grid-column: 1/-1; }
+  [data-role="reception"] #main .button.reception-desktop-action,
+  [data-role="reception"] #main[data-route="dashboard"] .reception-metrics > div:nth-child(even) { display: none; }
+  [data-role="reception"] #main[data-route="dashboard"] .reception-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  [data-role="reception"] #main .reception-home-grid .button.small { min-height: 44px; }
+}
+
+@media (max-width: 700px) {
+  [data-role="reception"].clinical-shell:is(.side-collapsed,:not(.side-collapsed)) { grid-template-columns: minmax(0,1fr); }
+  [data-role="reception"] #sidebar.clinical-sidebar { position: fixed; width: min(275px,83vw); }
+  [data-role="reception"] .clinical-workspace .clinical-topbar { display: flex; }
+  [data-role="reception"] .topbar-heading .menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    min-height: 40px;
+    padding: 0 8px;
+    border: 1px solid var(--reception-control);
+    color: var(--reception-navy);
+  }
+  [data-role="reception"] .topbar-tools { display: none; }
+  [data-role="reception"] .reception-home-grid .reception-row { flex-direction: row; align-items: center; }
+  [data-role="reception"] #main :is(.reception-grid,.reception-steps) { grid-template-columns: minmax(0,1fr); }
+  [data-role="reception"] #main .reception-metrics { grid-auto-flow: row; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  [data-role="reception"] #main .reception-metrics > div { min-height: 80px; padding: 12px; }
+  [data-role="reception"] #main .page-head { flex-wrap: wrap; }
+  [data-role="reception"] #main .reception-map { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
+@media print {
+  body:has([data-role="reception"] .reception-printable) :is(.clinical-sidebar,.clinical-topbar,.page-head) { display: none; }
+  body:has([data-role="reception"] .reception-printable) .clinical-shell { display: block; }
+}
